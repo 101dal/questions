@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const DEFAULT_QUIZ_URLS = [
-        "https://raw.githubusercontent.com/USER/REPO/main/quiz_histoire.json",
+        "https://raw.githubusercontent.com/101dal/questions/refs/heads/main/quiz/test.json",
     ];
 
     // --- Constants ---
@@ -469,11 +469,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) {
                 throw new Error(`Erreur réseau: ${response.status} ${response.statusText}`);
             }
-            const contentType = response.headers.get("content-type");
-            if (!contentType || !contentType.includes("application/json")) {
-                throw new Error("La réponse n'est pas au format JSON.");
+            let jsonContent;
+            try {
+                jsonContent = await response.json(); // Tente de parser la réponse en JSON
+            } catch (parseError) {
+                // Si le parsing échoue, ALORS on lève l'erreur de format JSON
+                console.error("JSON Parse Error from URL:", parseError);
+                throw new Error("La réponse reçue n'a pas pu être interprétée comme JSON valide.");
             }
-            const jsonContent = await response.json();
             processQuizJson(jsonContent, { source: 'url', url: url });
         } catch (error) {
             console.error("Fetch URL Error:", error);
@@ -551,6 +554,35 @@ document.addEventListener('DOMContentLoaded', () => {
             if (q.type === 'association' && (!Array.isArray(q.items_left) || !Array.isArray(q.items_right) || typeof q.correctAnswer !== 'object')) throw new Error(`Question ${qNum} (Association): 'items_left' (tab), 'items_right' (tab), et 'correctAnswer' (objet) sont requis et doivent avoir le bon type.`);
         }
         return true;
+    }
+
+    async function importDefaultQuizzes() {
+        if (DEFAULT_QUIZ_URLS.length === 0) return; // Rien à faire
+
+        console.log("Checking for default quizzes to import...");
+        let importNeededCount = 0;
+
+        for (const url of DEFAULT_QUIZ_URLS) {
+            // Vérifie si un quiz avec cette URL source existe déjà
+            const alreadyExists = quizLibrary.some(quiz => quiz.source === 'url' && quiz.url === url);
+
+            if (!alreadyExists) {
+                importNeededCount++;
+                console.log(`Default quiz URL not found locally, attempting import: ${url}`);
+                // Utilise fetchQuizFromUrl qui gère déjà l'ajout à la bibliothèque et les erreurs
+                // On lance l'import mais on n'attend pas ici pour ne pas bloquer le démarrage
+                fetchQuizFromUrl(url).catch(err => {
+                    // L'erreur est déjà loggée et un toast affiché dans fetchQuizFromUrl
+                    console.warn(`Initial import failed for ${url}. User can try manually later.`);
+                });
+            } else {
+                console.log(`Default quiz URL already in library: ${url}`);
+            }
+        }
+
+        if (importNeededCount > 0) {
+            showToast(`Tentative d'importation de ${importNeededCount} quiz par défaut en arrière-plan...`, 'info', 2500);
+        }
     }
 
     // --- Configuration Logic ---
@@ -2534,9 +2566,12 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Quiz Master (Local Version) Initializing...");
         loadUserPreferences();
         loadQuizLibrary();
+        loadQuizLibrary();
         loadLocalHistory();
         loadLocalStats();
         loadLastConfig();
+
+        importDefaultQuizzes();
 
         applyTheme(userPreferences.theme);
         setupEventListeners();
