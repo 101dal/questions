@@ -1,0 +1,136 @@
+{
+    "quizId": "histoire_france_rev_base_v1",
+    "quizTitle": "Histoire de France - Révolution et Empire (Base)",
+    "dummyAnswers": {
+        "Dates": [
+            "1788",
+            "1800",
+            "1812",
+            "14 Juillet 1790",
+            "9 Thermidor An III"
+        ],
+        "Personnages": [
+            "Louis XIV",
+            "Robespierre",
+            "Napoléon II",
+            "Mirabeau",
+            "Talleyrand"
+        ],
+        "Événements": [
+            "Le Sacre de Reims",
+            "La Nuit du 4 août",
+            "La Prise de la Bastille",
+            "Le Directoire"
+        ],
+        "Concepts": [
+            "La Monarchie Absolue",
+            "Les États Généraux",
+            "Le Consulat",
+            "La Terreur"
+        ],
+        "Global": [
+            "Réponse A",
+            "Réponse B",
+            "Réponse C",
+            "Option D",
+            "Autre Chose"
+        ]
+    },
+    "questions": [
+        {
+            "id": "q1_bastille_date",
+            "type": "qcm",
+            "text": "Quelle est la date **principale** associée à la prise de la Bastille ?",
+            "correctAnswer": "14 Juillet 1789",
+            "explanation": "Le 14 juillet 1789 est la date symbolique de la prise de la Bastille, marquant un tournant majeur dans la Révolution française.",
+            "points": 10,
+            "category": "Dates"
+        },
+        {
+            "id": "q2_napoleon_coup",
+            "type": "vrai_faux",
+            "text": "Napoléon Bonaparte a pris le pouvoir par un coup d'État appelé le '18 Brumaire'.",
+            "correctAnswer": true,
+            "explanation": "Le coup d'État du 18 Brumaire An VIII (9 novembre 1799) a renversé le Directoire et instauré le Consulat, avec Bonaparte comme Premier Consul.",
+            "points": 5,
+            "category": "Événements"
+        },
+        {
+            "id": "q3_roi_revolution",
+            "type": "texte_libre",
+            "text": "Quel roi régnait sur la France au début de la Révolution de 1789 ?",
+            "correctAnswer": "Louis XVI",
+            "explanation": "Louis XVI était le roi de France lorsque la Révolution française a éclaté.",
+            "points": 8,
+            "category": "Personnages"
+        },
+        {
+            "id": "q4_ordre_regimes",
+            "type": "ordre",
+            "text": "Mettez dans l'ordre chronologique les régimes politiques suivants :",
+            "items": [
+                "Premier Empire",
+                "Consulat",
+                "Monarchie Constitutionnelle (1791-1792)",
+                "Directoire"
+            ],
+            "correctAnswer": [
+                "Monarchie Constitutionnelle (1791-1792)",
+                "Directoire",
+                "Consulat",
+                "Premier Empire"
+            ],
+            "explanation": "Après la monarchie absolue, la France est devenue une monarchie constitutionnelle, suivie de la Première République (Convention puis Directoire), puis du Consulat et enfin du Premier Empire.",
+            "points": 15,
+            "category": "Concepts"
+        },
+        {
+            "id": "q5_association_batailles",
+            "type": "association",
+            "text": "Associez chaque bataille à sa conséquence ou caractéristique majeure :",
+            "items_left": [
+                "Austerlitz (1805)",
+                "Waterloo (1815)",
+                "Trafalgar (1805)",
+                "Valmy (1792)"
+            ],
+            "items_right": [
+                "Défaite navale française majeure",
+                "Victoire décisive de la Révolution",
+                "Défaite finale de Napoléon",
+                "\"Bataille des Trois Empereurs\""
+            ],
+            "correctAnswer": {
+                "Austerlitz (1805)": "\"Bataille des Trois Empereurs\"",
+                "Waterloo (1815)": "Défaite finale de Napoléon",
+                "Trafalgar (1805)": "Défaite navale française majeure",
+                "Valmy (1792)": "Victoire décisive de la Révolution"
+            },
+            "explanation": "Austerlitz fut une victoire brillante contre les Russes et Autrichiens. Trafalgar assura la suprématie navale britannique. Valmy sauva la jeune République. Waterloo marqua la fin de l'épopée napoléonienne.",
+            "points": 20,
+            "category": "Événements"
+        },
+        {
+            "id": "q6_cahiers_doleances",
+            "type": "qcm_multi",
+            "text": "Quels types de demandes trouvait-on fréquemment dans les cahiers de doléances de 1789 ? (Plusieurs réponses possibles)",
+            "correctAnswer": [
+                "Réforme de la justice",
+                "Égalité devant l'impôt",
+                "Suppression de certains privilèges seigneuriaux"
+            ],
+            "explanation": "Les cahiers de doléances exprimaient les attentes des différents ordres. La réforme fiscale (égalité), la réforme judiciaire et la fin des privilèges étaient des thèmes récurrents, bien que l'abolition de la monarchie n'était pas majoritaire au début.",
+            "points": 12,
+            "category": "Concepts"
+        },
+        {
+            "id": "q7_sacre_napoleon_annee",
+            "type": "texte_libre",
+            "text": "En quelle année Napoléon Ier s'est-il fait sacrer Empereur des Français ?",
+            "correctAnswer": "1804",
+            "explanation": "Le sacre de Napoléon Ier a eu lieu le 2 décembre 1804 à Notre-Dame de Paris.",
+            "points": 7,
+            "category": "Dates"
+        }
+    ]
+}

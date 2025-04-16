@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const DEFAULT_QUIZ_URLS = [
+        "https://raw.githubusercontent.com/USER/REPO/main/quiz_histoire.json",
+    ];
+
     // --- Constants ---
     const PRESETS = {
         'preset-short': { questions: 10 }, // Time limit handled separately if needed
