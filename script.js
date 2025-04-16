@@ -532,29 +532,152 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /** Validates quiz data structure. Throws error on failure. */
     function validateQuizData(jsonData) {
-        if (!jsonData || typeof jsonData !== 'object') throw new Error("Contenu JSON invalide.");
-        if (!jsonData.quizId || typeof jsonData.quizId !== 'string' || !jsonData.quizId.trim()) throw new Error("Champ 'quizId' (identifiant unique) manquant ou invalide.");
-        if (!jsonData.quizTitle || typeof jsonData.quizTitle !== 'string' || !jsonData.quizTitle.trim()) throw new Error("Champ 'quizTitle' manquant ou invalide.");
-        if (!Array.isArray(jsonData.questions) || jsonData.questions.length === 0) throw new Error("Champ 'questions' manquant, vide, ou n'est pas un tableau.");
+        if (!jsonData || typeof jsonData !== 'object') {
+            throw new Error("Contenu JSON invalide ou vide.");
+        }
+        if (!jsonData.quizId || typeof jsonData.quizId !== 'string' || !jsonData.quizId.trim()) {
+            throw new Error("Champ 'quizId' (identifiant unique string) manquant ou invalide.");
+        }
+        if (!jsonData.quizTitle || typeof jsonData.quizTitle !== 'string' || !jsonData.quizTitle.trim()) {
+            // Warn instead of throwing error for title, can use ID as fallback
+            console.warn(`Champ 'quizTitle' manquant ou invalide pour quizId '${jsonData.quizId}'. Utilisation de l'ID comme titre.`);
+            jsonData.quizTitle = jsonData.quizId; // Assign ID as title if missing
+        }
+        if (!Array.isArray(jsonData.questions) || jsonData.questions.length === 0) {
+            throw new Error(`Champ 'questions' pour quizId '${jsonData.quizId}' manquant, vide, ou n'est pas un tableau.`);
+        }
 
         const validTypes = ['qcm', 'vrai_faux', 'texte_libre', 'association', 'ordre', 'qcm_multi'];
+        const questionIds = new Set(); // Check for duplicate question IDs within the quiz
+
         for (let i = 0; i < jsonData.questions.length; i++) {
             const q = jsonData.questions[i];
             const qNum = i + 1;
-            if (!q || typeof q !== 'object') throw new Error(`Question ${qNum}: Format invalide.`);
-            if (!q.type || !validTypes.includes(q.type)) throw new Error(`Question ${qNum}: Type '${q.type || 'inconnu'}' invalide ou manquant.`);
-            if (!q.text || typeof q.text !== 'string') throw new Error(`Question ${qNum}: Texte ('text') manquant ou invalide.`);
-            if (q.correctAnswer === undefined || q.correctAnswer === null) throw new Error(`Question ${qNum}: Réponse correcte ('correctAnswer') manquante.`);
-            if (q.explanation === undefined || typeof q.explanation !== 'string') throw new Error(`Question ${qNum}: Explication ('explanation') manquante ou invalide (peut être chaîne vide).`);
-            if (q.points !== undefined && (typeof q.points !== 'number' || q.points < 0)) throw new Error(`Question ${qNum}: Points ('points') invalides (doit être nombre >= 0).`);
 
-            // Type-specific validation (add more checks as needed)
-            if (q.type === 'vrai_faux' && typeof q.correctAnswer !== 'boolean') throw new Error(`Question ${qNum} (V/F): 'correctAnswer' doit être true ou false.`);
-            if (q.type === 'qcm_multi' && !Array.isArray(q.correctAnswer)) throw new Error(`Question ${qNum} (QCM-Multi): 'correctAnswer' doit être un tableau.`);
-            if (q.type === 'ordre' && (!Array.isArray(q.items) || !Array.isArray(q.correctAnswer))) throw new Error(`Question ${qNum} (Ordre): 'items' et 'correctAnswer' doivent être des tableaux.`);
-            if (q.type === 'association' && (!Array.isArray(q.items_left) || !Array.isArray(q.items_right) || typeof q.correctAnswer !== 'object')) throw new Error(`Question ${qNum} (Association): 'items_left' (tab), 'items_right' (tab), et 'correctAnswer' (objet) sont requis et doivent avoir le bon type.`);
+            // Basic Question Structure Checks
+            if (!q || typeof q !== 'object') {
+                throw new Error(`Question ${qNum} (quizId: ${jsonData.quizId}): Format invalide (n'est pas un objet).`);
+            }
+            if (q.id) { // Validate question ID if present
+                if (typeof q.id !== 'string' || !q.id.trim()) throw new Error(`Question ${qNum} (quizId: ${jsonData.quizId}): ID de question ('id') invalide.`);
+                if (questionIds.has(q.id)) throw new Error(`Question ${qNum} (quizId: ${jsonData.quizId}): ID de question ('${q.id}') dupliqué dans ce quiz.`);
+                questionIds.add(q.id);
+            }
+            if (!q.type || !validTypes.includes(q.type)) {
+                throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}): Type ('${q.type || 'inconnu'}') invalide ou manquant. Types valides: ${validTypes.join(', ')}.`);
+            }
+            if (!q.text || typeof q.text !== 'string' || !q.text.trim()) {
+                throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}): Texte ('text') manquant ou vide.`);
+            }
+            if (q.correctAnswer === undefined || q.correctAnswer === null) {
+                throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}): Réponse correcte ('correctAnswer') manquante.`);
+            }
+            if (q.explanation === undefined || typeof q.explanation !== 'string') {
+                // Allow empty string for explanation, but require the field
+                throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}): Explication ('explanation') manquante ou invalide (doit être string, peut être vide).`);
+            }
+            if (q.points !== undefined && (typeof q.points !== 'number' || !Number.isInteger(q.points) || q.points < 0)) {
+                throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}): Points ('points') invalides (doit être un nombre entier >= 0).`);
+            }
+            if (q.category !== undefined && (typeof q.category !== 'string' || !q.category.trim())) {
+                console.warn(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}): Catégorie ('category') fournie mais vide.`);
+                // Allow empty category string, maybe sanitize later?
+            }
+
+            // Type-specific Validation for correctAnswer and required fields
+            switch (q.type) {
+                case 'vrai_faux':
+                    if (typeof q.correctAnswer !== 'boolean') {
+                        throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: V/F): 'correctAnswer' doit être un booléen (true ou false).`);
+                    }
+                    break;
+                case 'qcm':
+                    if (typeof q.correctAnswer !== 'string' || !q.correctAnswer.trim()) {
+                        throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: QCM): 'correctAnswer' doit être une chaîne de caractères non vide.`);
+                    }
+                    break;
+                case 'texte_libre':
+                    if (typeof q.correctAnswer !== 'string' || !q.correctAnswer.trim()) {
+                        throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: Texte Libre): 'correctAnswer' doit être une chaîne de caractères non vide.`);
+                    }
+                    // Optional: check tolerance field if you add it
+                    break;
+                case 'qcm_multi':
+                    if (!Array.isArray(q.correctAnswer) || q.correctAnswer.length === 0) {
+                        throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: QCM-Multi): 'correctAnswer' doit être un tableau (array) non vide.`);
+                    }
+                    if (!q.correctAnswer.every(item => typeof item === 'string' && item.trim())) {
+                        throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: QCM-Multi): Tous les éléments dans 'correctAnswer' doivent être des chaînes de caractères non vides.`);
+                    }
+                    break;
+                case 'ordre':
+                    if (!Array.isArray(q.items) || q.items.length < 2) {
+                        throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: Ordre): Le champ 'items' est requis, doit être un tableau avec au moins 2 éléments.`);
+                    }
+                    if (!q.items.every(item => typeof item === 'string' && item.trim())) {
+                        throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: Ordre): Tous les éléments dans 'items' doivent être des chaînes de caractères non vides.`);
+                    }
+                    if (!Array.isArray(q.correctAnswer) || q.correctAnswer.length !== q.items.length) {
+                        throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: Ordre): 'correctAnswer' doit être un tableau de même taille que 'items'.`);
+                    }
+                    // Check if correctAnswer contains exactly the same elements as items (just possibly different order)
+                    const itemsSet = new Set(q.items);
+                    const correctAnsSet = new Set(q.correctAnswer);
+                    if (itemsSet.size !== correctAnsSet.size || ![...itemsSet].every(item => correctAnsSet.has(item))) {
+                        throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: Ordre): 'correctAnswer' doit contenir exactement les mêmes éléments que 'items'.`);
+                    }
+                    if (!q.correctAnswer.every(item => typeof item === 'string' && item.trim())) {
+                        throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: Ordre): Tous les éléments dans 'correctAnswer' doivent être des chaînes de caractères non vides.`);
+                    }
+                    break;
+                case 'association':
+                    if (!Array.isArray(q.items_left) || q.items_left.length === 0) {
+                        throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: Association): Le champ 'items_left' est requis et doit être un tableau non vide.`);
+                    }
+                    if (!q.items_left.every(item => typeof item === 'string' && item.trim())) {
+                        throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: Association): Tous les éléments dans 'items_left' doivent être des chaînes de caractères non vides.`);
+                    }
+                    if (!Array.isArray(q.items_right) || q.items_right.length !== q.items_left.length) {
+                        throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: Association): Le champ 'items_right' est requis et doit être un tableau de même taille que 'items_left'.`);
+                    }
+                    if (!q.items_right.every(item => typeof item === 'string' && item.trim())) {
+                        throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: Association): Tous les éléments dans 'items_right' doivent être des chaînes de caractères non vides.`);
+                    }
+                    // Check correctAnswer structure: must be an object, keys must be from items_left, values must be from items_right
+                    if (typeof q.correctAnswer !== 'object' || q.correctAnswer === null || Array.isArray(q.correctAnswer) || Object.keys(q.correctAnswer).length !== q.items_left.length) {
+                        throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: Association): 'correctAnswer' doit être un objet (map) avec une entrée pour chaque élément de 'items_left'.`);
+                    }
+                    const leftItemsSet = new Set(q.items_left);
+                    const rightItemsSet = new Set(q.items_right);
+                    for (const key in q.correctAnswer) {
+                        if (!leftItemsSet.has(key)) {
+                            throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: Association): Clé '${key}' dans 'correctAnswer' n'existe pas dans 'items_left'.`);
+                        }
+                        const value = q.correctAnswer[key];
+                        if (typeof value !== 'string' || !value.trim() || !rightItemsSet.has(value)) {
+                            throw new Error(`Question ${qNum} (id: ${q.id || 'N/A'}, quizId: ${jsonData.quizId}, type: Association): Valeur '${value}' pour la clé '${key}' dans 'correctAnswer' est invalide ou n'existe pas dans 'items_right'.`);
+                        }
+                    }
+                    break;
+            }
+        } // End loop through questions
+
+        // Validate dummyAnswers structure if present
+        if (jsonData.dummyAnswers !== undefined) {
+            if (typeof jsonData.dummyAnswers !== 'object' || jsonData.dummyAnswers === null || Array.isArray(jsonData.dummyAnswers)) {
+                throw new Error(`Champ 'dummyAnswers' (quizId: ${jsonData.quizId}), s'il est présent, doit être un objet (map).`);
+            }
+            for (const category in jsonData.dummyAnswers) {
+                if (!Array.isArray(jsonData.dummyAnswers[category])) {
+                    throw new Error(`Dans 'dummyAnswers' (quizId: ${jsonData.quizId}), la valeur pour la clé '${category}' doit être un tableau.`);
+                }
+                if (!jsonData.dummyAnswers[category].every(item => typeof item === 'string' && item.trim())) {
+                    throw new Error(`Dans 'dummyAnswers[${category}]' (quizId: ${jsonData.quizId}), tous les éléments doivent être des chaînes de caractères non vides.`);
+                }
+            }
         }
-        return true;
+
+        return true; // If no errors were thrown
     }
 
     async function importDefaultQuizzes() {
@@ -1172,53 +1295,135 @@ document.addEventListener('DOMContentLoaded', () => {
         return questionBlock;
     }
 
-    /** Helper function to generate false answers */
+    /**
+ * Generates false answers (distractors) for QCM/QCM-Multi questions.
+ * Prioritizes dummy answers from the same category, then global, then correct answers
+ * from other questions, then dummies from other categories.
+ * Ensures only strings (or booleans converted to 'Vrai'/'Faux') are added.
+ *
+ * @param {object} currentQuestion The current question object.
+ * @param {Array} allQuestions All questions from the loaded JSON quiz.
+ * @param {object|null} dummyAnswersData The dummyAnswers object from JSON (can be null/undefined).
+ * @param {Array} excludedAnswers Answers to exclude (e.g., all correct answers for multi-choice).
+ * @returns {Array<string>} An array of up to 3 unique false answer strings.
+ */
     function generateFalseAnswers(currentQuestion, allQuestions, dummyAnswersData, excludedAnswers = []) {
+        // Ensure correctAnswer is treated correctly (single string or array for multi)
         const correctAnswer = currentQuestion.correctAnswer;
-        const finalExcluded = new Set([
-            ...(Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer]),
-            ...excludedAnswers
-        ].map(a => String(a).toLowerCase())); // Case-insensitive check
+        const correctAnswersArray = Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer];
+
+        // Build the set of excluded answers (case-insensitive)
+        // Includes the correct answer(s) for the current question and any explicitly passed exclusions
+        const finalExcluded = new Set(
+            [...correctAnswersArray, ...excludedAnswers]
+                .map(a => String(a).toLowerCase()) // Convert to string and lowercase
+        );
 
         let potentialFalsePool = new Set();
 
+        /**
+         * Safely adds a potential answer to the pool if it's a valid type (string/boolean)
+         * and not already excluded. Converts boolean to string ('Vrai'/'Faux').
+         * @param {*} answer The potential answer to add.
+         */
         const addAnswerToPool = (answer) => {
-            const answerStr = String(answer); // Work with string representation
-            if (answer !== undefined && answer !== null && answerStr.trim() !== '' && !finalExcluded.has(answerStr.toLowerCase())) {
-                potentialFalsePool.add(answerStr); // Add the original string form
+            const answerType = typeof answer;
+
+            // Only process non-null/undefined strings or booleans
+            if (answerType === 'string' && answer.trim() !== '') {
+                const answerLower = answer.toLowerCase();
+                if (!finalExcluded.has(answerLower)) {
+                    potentialFalsePool.add(answer); // Add the original string
+                }
+            } else if (answerType === 'boolean') {
+                const answerStr = answer ? 'Vrai' : 'Faux';
+                const answerStrLower = answerStr.toLowerCase();
+                if (!finalExcluded.has(answerStrLower)) {
+                    potentialFalsePool.add(answerStr); // Add 'Vrai' or 'Faux'
+                }
             }
+            // Implicitly ignore numbers, objects, arrays, null, undefined, empty strings
         };
 
-        // Priority: Dummies from same category -> Global dummies -> Correct answers from other questions -> Other dummies
+        // --- Populate the pool in order of preference ---
+
+        // 1. Dummies from the same category (if category and dummies exist)
         if (dummyAnswersData && currentQuestion.category && dummyAnswersData[currentQuestion.category]) {
             dummyAnswersData[currentQuestion.category].forEach(addAnswerToPool);
         }
+
+        // 2. Dummies from Global category (if it exists)
         if (dummyAnswersData && dummyAnswersData.Global) {
             dummyAnswersData.Global.forEach(addAnswerToPool);
         }
-        allQuestions.forEach(q => { if (q !== currentQuestion) addAnswerToPool(q.correctAnswer); });
+
+        // 3. Correct answers from *other* questions (prefer same category first)
+        const otherQuestions = allQuestions.filter(q => q !== currentQuestion);
+        // Same category first
+        otherQuestions.forEach(q => {
+            if (q.category === currentQuestion.category) {
+                // Need to handle cases where correctAnswer might be an array (QCM-Multi) or object (Association)
+                if (typeof q.correctAnswer === 'string' || typeof q.correctAnswer === 'boolean') {
+                    addAnswerToPool(q.correctAnswer);
+                } else if (Array.isArray(q.correctAnswer)) {
+                    // For arrays (QCM-Multi, Ordre), add individual valid string items
+                    q.correctAnswer.forEach(item => {
+                        if (typeof item === 'string') addAnswerToPool(item);
+                    });
+                }
+                // Ignore object correctAnswers (Association) as distractors for QCM
+            }
+        });
+        // Then other categories
+        otherQuestions.forEach(q => {
+            if (q.category !== currentQuestion.category) {
+                if (typeof q.correctAnswer === 'string' || typeof q.correctAnswer === 'boolean') {
+                    addAnswerToPool(q.correctAnswer);
+                } else if (Array.isArray(q.correctAnswer)) {
+                    q.correctAnswer.forEach(item => {
+                        if (typeof item === 'string') addAnswerToPool(item);
+                    });
+                }
+                // Ignore object correctAnswers
+            }
+        });
+
+        // 4. Dummies from other categories (if dummies exist)
         if (dummyAnswersData) {
             for (const cat in dummyAnswersData) {
+                // Check category is not the current one and not Global
                 if (cat !== currentQuestion.category && cat !== "Global") {
                     dummyAnswersData[cat].forEach(addAnswerToPool);
                 }
             }
         }
 
-        let shuffledPool = shuffleArray(Array.from(potentialFalsePool));
-        let falseOptions = shuffledPool.slice(0, 3); // Aim for 3
+        // --- Select final options ---
 
-        // Fallback if not enough unique dummies found
+        // Shuffle the collected valid distractors
+        let shuffledPool = shuffleArray(Array.from(potentialFalsePool));
+
+        // Take up to 3 options from the pool
+        let falseOptions = shuffledPool.slice(0, 3);
+
+        // --- Fallback if not enough unique options found ---
         let fallbackCounter = 1;
         while (falseOptions.length < 3) {
             const placeholder = `Option Fallback ${fallbackCounter}`;
+            // Ensure fallback doesn't match excluded answers
             if (!finalExcluded.has(placeholder.toLowerCase())) {
                 falseOptions.push(placeholder);
             }
             fallbackCounter++;
-            if (fallbackCounter > 10) break; // Safety break
+            // Safety break to prevent infinite loop if something is wrong
+            if (fallbackCounter > 20) {
+                console.warn(`Could not generate 3 unique false answers for question (id: ${currentQuestion.id || 'N/A'}), generated ${falseOptions.length}.`);
+                break;
+            }
         }
-        return falseOptions.slice(0, 3); // Ensure only 3
+
+        // Return exactly 3 options (or fewer if fallback failed badly)
+        return falseOptions.slice(0, 3);
     }
 
     /** Shuffles array in place */
