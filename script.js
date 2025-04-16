@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     const DEFAULT_QUIZ_URLS = [
-        "https://raw.githubusercontent.com/101dal/questions/refs/heads/main/quiz/test.json",
         "https://raw.githubusercontent.com/101dal/questions/refs/heads/main/quiz/chapitre%203.json"
     ];
 
