@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Master - Révision Locale</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Potentiellement ajouter ici des liens pour PWA manifest plus tard -->
+</head>
+
+<body data-theme="light"> <!-- Thème par défaut -->
+    <div class="container">
+        <h1 class="main-title">Quiz Master</h1>
+
+        <!-- Écran 1: Tableau de Bord (Import/Bibliothèque/Config/Historique) -->
+        <div id="dashboard-screen" class="screen active"> <!-- Dashboard est l'écran par défaut -->
+            <!-- Section Import/Bibliothèque -->
+            <div class="card">
+                <h2>1. Importer / Choisir un Quiz</h2>
+                <!-- Import Fichier -->
+                <label class="file-input-label">
+                    <span>Choisir un fichier .json ou glisser-déposer ici...</span>
+                    <input type="file" id="file-input" accept=".json">
+                </label>
+                <div id="drag-drop-overlay" class="drag-drop-zone">Relâchez pour charger</div>
+                <!-- Import URL -->
+                <div class="form-group url-import-group">
+                    <label for="url-input">Ou importer depuis une URL :</label>
+                    <div class="input-button-group">
+                        <input type="url" id="url-input" placeholder="https://exemple.com/quiz.json">
+                        <button id="import-url-btn" class="btn-secondary">Importer</button>
+                    </div>
+                </div>
+                <p id="file-error" class="error-message hidden"></p>
+                <p id="file-success" class="success-message hidden"></p>
+
+                <!-- Bibliothèque Locale -->
+                <h2 class="h2-subsection">2. Bibliothèque Locale</h2>
+                <div id="quiz-library">
+                    <p>Aucun quiz dans la bibliothèque. Importez-en un !</p>
+                    <!-- La liste des quiz sera générée ici par JS -->
+                    <!-- Exemple d'item généré par JS:
+                    <div class="quiz-library-item" data-quiz-id="unique_id_123">
+                        <span class="quiz-title">Titre du Quiz Exemple</span>
+                        <span class="quiz-source">local</span>
+                        <button class="delete-quiz-btn" title="Supprimer de la bibliothèque">✖</button>
+                    </div>
+                     -->
+                </div>
+            </div>
+
+            <!-- Section Configuration (si quiz sélectionné) -->
+            <div id="config-options" class="card hidden">
+                <h2>3. Configurer la Session</h2>
+                <div class="config-section">
+                    <label><input type="radio" name="quiz-mode" value="preset-short" checked><span>Preset: Rapide</span></label>
+                    <label><input type="radio" name="quiz-mode" value="preset-medium"><span>Preset: Moyen</span></label>
+                    <label><input type="radio" name="quiz-mode" value="preset-long"><span>Preset: Long</span></label>
+                    <label><input type="radio" name="quiz-mode" value="all"><span>Toutes les questions</span></label>
+                    <label class="has-extra-input">
+                        <input type="radio" name="quiz-mode" value="errors">
+                        <span>🎯 Rejouer erreurs des</span>
+                        <input type="number" id="error-sessions-count" value="3" min="1" class="inline-number-input">
+                        <span>dernières sessions</span>
+                    </label>
+                    <label><input type="radio" name="quiz-mode" value="flashcards"><span>🗂️ Mode Flashcards</span></label>
+                    <label><input type="radio" name="quiz-mode" value="exam"><span>⏱️ Mode Examen Blanc</span></label>
+                    <label><input type="radio" name="quiz-mode" value="custom"><span>Personnalisé:</span></label>
+                    <div id="custom-settings" class="hidden">
+                        <label for="custom-time">Temps (min):</label>
+                        <input type="number" id="custom-time" min="1" placeholder="Libre si vide">
+                        <label for="custom-questions">Nb Questions:</label>
+                        <input type="number" id="custom-questions" min="1" placeholder="Toutes">
+                    </div>
+                </div>
+                <div class="config-extra-options">
+                    <label class="checkbox-label"><input type="checkbox" id="allow-navigation-checkbox"><span>Permettre navigation/correction arrière</span></label>
+                    <label class="checkbox-label"><input type="checkbox" id="instant-feedback-checkbox" checked><span>Feedback instantané (Correct/Incorrect)</span></label>
+                    <label class="checkbox-label indented-option"><input type="checkbox" id="show-expl-on-incorrect"><span>↳ Afficher explication/réponse si incorrect</span></label>
+                </div>
+                <button id="start-quiz-btn" class="btn-primary btn-large">Lancer la Session</button>
+            </div>
+
+            <!-- Section Historique des Scores -->
+            <div id="score-history-section" class="card">
+                <h2>Historique Local</h2>
+                <div id="score-history-controls">
+                    <label for="history-filter">Filtrer par Quiz:</label>
+                    <select id="history-filter">
+                        <option value="all">Tous les Quiz</option>
+                        <!-- Les noms des quiz seront ajoutés ici par JS -->
+                    </select>
+                    <!-- Ajouter options de tri ici? -->
+                </div>
+                <div id="score-history">
+                    <p>Aucun historique local pour le moment.</p>
+                    <!-- Le tableau de l'historique sera généré ici -->
+                </div>
+                <button id="clear-history-btn" class="btn-secondary btn-danger hidden">Effacer l'historique local</button>
+            </div>
+        </div>
+
+        <!-- Écran 2: Quiz en cours -->
+        <div id="quiz-screen" class="screen hidden">
+            <div id="quiz-header" class="card sticky-header">
+                 <div class="quiz-header-top-row">
+                    <h2 id="quiz-title-display">Titre du Quiz</h2>
+                    <button id="fullscreen-toggle-btn" class="btn-icon" title="Mode Plein Écran">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                        <!-- Icône réduire alternative (JS togglera la visibilité) -->
+                         <svg id="fullscreen-exit-icon" class="hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
+                    </button>
+                 </div>
+                <div class="quiz-info">
+                    <span id="question-counter">Question X / Y</span>
+                    <span id="timer">Temps: --:--</span>
+                    <span id="streak-counter">Série: 0 🔥</span>
+                    <span id="score-display">Score: 0 pts</span>
+                </div>
+                <div id="progress-bar-container">
+                    <div id="progress-bar"></div>
+                </div>
+                <div id="question-grid-nav">
+                    <!-- Les indicateurs seront ajoutés ici par JS -->
+                </div>
+            </div>
+
+            <div id="quiz-content-area">
+                <!-- Les blocs de questions s'afficheront ici -->
+            </div>
+
+            <button id="finish-quiz-btn" class="btn-primary finish-button hidden">Voir les Résultats</button>
+            <button id="cancel-quiz-btn" class="btn-secondary cancel-button">Abandonner la Session</button>
+
+        </div>
+
+        <!-- Écran 3: Résultats -->
+        <div id="results-screen" class="screen hidden">
+            <div class="card results-summary">
+                <h2>Résultats: <span id="results-quiz-title"></span></h2>
+                <div class="summary-metrics">
+                    <p id="score-summary">Score: X / Y (Z pts)</p>
+                    <p id="time-taken">Temps: MM:SS</p>
+                    <p id="accuracy">Précision: N%</p>
+                    <p id="local-comparison" class="hidden">Moyenne locale: Z%</p> <!-- Nouveau -->
+                </div>
+                <div id="results-achievements">
+                    <!-- Badges locaux (ex: <span class="achievement-badge">🎉 Score Parfait !</span>) -->
+                </div>
+            </div>
+            <div class="card">
+                <div class="detailed-results-header">
+                     <h3>Révision détaillée :</h3>
+                     <!-- Filtres de résultats -->
+                     <div class="detailed-results-filters">
+                         <span>Filtrer:</span>
+                         <button data-filter="all" class="btn-filter active">Tout</button>
+                         <button data-filter="incorrect" class="btn-filter">Erreurs</button>
+                         <button data-filter="marked" class="btn-filter">Marquées</button>
+                     </div>
+                </div>
+                <div id="detailed-results">
+                    <!-- Le détail des réponses sera chargé ici -->
+                </div>
+            </div>
+            <div class="results-actions card">
+                <button id="restart-quiz-btn" class="btn-secondary">Refaire (même config)</button>
+                <button id="restart-errors-btn" class="btn-secondary">Refaire les erreurs (X dern. sessions)</button>
+                <button id="new-config-btn" class="btn-secondary">Nouvelle Config (même quiz)</button>
+                <button id="export-session-btn" class="btn-secondary">Exporter cette session (.txt)</button> <!-- Nouveau -->
+                <button id="back-to-dashboard-btn" class="btn-primary">Retour au Tableau de Bord</button>
+            </div>
+        </div>
+
+        <!-- Écran 4: Paramètres & Statistiques Locales -->
+        <div id="settings-screen" class="screen hidden">
+            <div class="card">
+                <h2>Paramètres & Statistiques Locales</h2>
+
+                 <!-- Section Paramètres -->
+                 <div class="settings-section">
+                    <h3>Paramètres</h3>
+                    <div class="settings-group">
+                        <label for="theme-select">Thème Visuel:</label>
+                        <select id="theme-select">
+                            <option value="light">Clair</option>
+                            <option value="dark">Sombre</option>
+                        </select>
+                    </div>
+                    <div class="settings-group">
+                        <label class="checkbox-label"><input type="checkbox" id="sound-effects-toggle" checked><span>Activer les effets sonores</span></label>
+                    </div>
+                 </div>
+
+                 <!-- Section Gestion Données -->
+                 <div class="settings-section">
+                    <h3>Gestion des Données Locales</h3>
+                     <div class="settings-group data-management-buttons">
+                         <button id="export-data-btn" class="btn-secondary">Exporter TOUTES les données (.json)</button>
+                         <button id="import-data-btn" class="btn-secondary">Importer des données (.json)</button>
+                     </div>
+                     <p class="warning-message small">Attention : L'importation fusionne les données. L'export est recommandé comme sauvegarde.</p>
+                 </div>
+
+                 <!-- Section Stats Globales -->
+                 <div class="settings-section">
+                     <h3>Statistiques Globales (Locales)</h3>
+                     <div id="general-stats-local">
+                         <p><strong>Quiz Tentés:</strong> <span id="stats-total-quizzes-local">0</span></p>
+                         <p><strong>Questions Répondues:</strong> <span id="stats-total-answers-local">0</span></p>
+                         <p><strong>Précision Moyenne Globale:</strong> <span id="stats-avg-accuracy-local">--%</span></p>
+                         <p><strong>Plus Longue Série Globale:</strong> <span id="stats-longest-streak-local">0</span></p>
+                     </div>
+                 </div>
+
+                 <!-- Section Stats par Quiz -->
+                  <div class="settings-section">
+                      <h3>Statistiques par Quiz (Local)</h3>
+                      <div id="quiz-stats-local">
+                          <p>Aucune donnée d'historique par quiz.</p>
+                          <!-- Tableau ou liste sera généré ici -->
+                      </div>
+                  </div>
+
+                 <!-- Section Gamification Locale -->
+                 <div class="settings-section">
+                     <h3>Progression & Badges (Local)</h3>
+                     <div id="local-gamification">
+                        <p><strong>Niveau (Local):</strong> <span id="local-level">1</span> | <strong>XP:</strong> <span id="local-xp">0 / 100</span></p>
+                     </div>
+                     <h4>Badges Débloqués (Local)</h4>
+                     <div id="badges-earned-local">
+                         <p>Aucun badge local pour le moment.</p>
+                         <!-- Les badges locaux seront affichés ici -->
+                     </div>
+                 </div>
+
+            </div>
+             <button id="back-to-dashboard-from-settings-btn" class="btn-primary">Retour au Tableau de Bord</button>
+        </div>
+
+
+        <!-- Notifications Globales / Toasts -->
+        <div id="toast-notifications" class="toast-container">
+            <!-- Les messages Toast apparaîtront ici -->
+        </div>
+
+        <!-- Loader Global (optionnel) -->
+        <div id="global-loader" class="loader-overlay hidden">
+            <div class="loader-spinner"></div>
+        </div>
+
+    </div> <!-- Fin .container -->
+
+    <script src="script.js"></script>
+</body>
+
+</html>
