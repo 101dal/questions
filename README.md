@@ -18,7 +18,6 @@ Okay, voici un README complet pour le projet "Quiz Master (Local Version)", incl
     *   **Presets :** Sessions rapides, moyennes ou longues avec un nombre de questions prédéfini.
     *   **Toutes les questions :** Passez en revue l'intégralité d'un quiz.
     *   **Rejouer les erreurs :** Ciblez spécifiquement les questions échouées lors des X dernières sessions pour un quiz donné.
-    *   **Flashcards :** Mode de révision simple (Question -> Révéler Réponse/Explication -> Auto-évaluation).
     *   **Examen Blanc :** Simulez des conditions d'examen (pas de feedback immédiat, score final).
     *   **Personnalisé :** Définissez vous-même le nombre de questions et/ou une limite de temps.
 *   **Types de Questions Interactifs :**
