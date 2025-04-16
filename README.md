@@ -6,8 +6,6 @@ Okay, voici un README complet pour le projet "Quiz Master (Local Version)", incl
 
 **Quiz Master** est une application web d'apprentissage et de révision personnelle, conçue pour fonctionner entièrement **localement** dans votre navigateur. Importez vos propres quiz au format JSON, testez vos connaissances avec différents types de questions interactives, suivez votre progression et gérez vos données sans nécessiter de compte ou de connexion internet (après le chargement initial).
 
-![Exemple Visuel (placeholder)](placeholder.png) _(Optionnel: Ajoutez une capture d'écran ici)_
-
 ## Fonctionnalités Principales
 
 *   **Fonctionnement 100% Local :** Aucune inscription, aucun serveur. Toutes les données (quiz, historique, statistiques, préférences) sont stockées dans le `localStorage` de votre navigateur.
