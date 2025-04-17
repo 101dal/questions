@@ -1296,6 +1296,24 @@ body[data-theme="dark"] #quiz-library {
     min-height: 100px;
 }
 
+.ordering-items-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Garder le même gap que .answer-options.ordre */
+    padding: 10px; /* Ajouter un petit padding intérieur si souhaité */
+    border: 1px dashed transparent; /* Bordure invisible pour délimiter, ou utiliser une couleur légère */
+    min-height: 80px; /* Donner une hauteur minimale */
+    border-radius: var(--border-radius-small); /* Optionnel: arrondir les coins */
+}
+
+.ordering-items-container:has(.ordering-placeholder) { /* Style quand un placeholder est dedans */
+    border-color: var(--current-primary-light);
+    background-color: rgba(0, 0, 0, 0.02);
+}
+body[data-theme="dark"] .ordering-items-container:has(.ordering-placeholder) {
+     background-color: rgba(255, 255, 255, 0.03);
+}
+
 .ordering-item {
     padding: 12px 15px;
     background-color: var(--current-bg-color-input);
@@ -1342,10 +1360,15 @@ body[data-theme="dark"] #quiz-library {
     transition: height 0.1s ease-out;
 }
 
-.answer-options.ordre button.submit-answer-btn {
+/* .answer-options.ordre button.submit-answer-btn {
     margin-top: 15px;
     width: auto;
     align-self: flex-start;
+} */
+
+.answer-options.ordre .submit-answer-btn {
+    margin-top: 15px; /* Garder la marge */
+    align-self: flex-start; /* Garder l'alignement */
 }
 
 /* Type: Association / Correspondance */

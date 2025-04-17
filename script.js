@@ -54,6 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let assocDraggedItemId = null; // ID of the item being dragged (association)
     let isDraggingFromTarget = false; // Flag for association dragging
 
+    // Settings
+    let settingsButton = null;
+
     // --- DOM Elements ---
     const screens = {
         dashboard: document.getElementById('dashboard-screen'),
@@ -1002,6 +1005,7 @@ document.addEventListener('DOMContentLoaded', () => {
         score = 0; totalPoints = 0; currentStreak = 0; maxStreak = 0;
         startTime = Date.now(); questionStartTime = 0; quizEndTime = 0;
         isQuizActive = true; isSubmittingAnswer = false;
+        updateSettingsButtonVisibility();
         timerInterval = null; timeLeft = timeLimit;
 
         // 4. Setup UI & Start
@@ -1265,20 +1269,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!Array.isArray(question.items) || !Array.isArray(question.correctAnswer)) {
                     optionsDiv.innerHTML = `<p class='error-message'>Erreur de structure question Ordre.</p>`; break;
                 }
+
+                // --- NOUVEAU : Créer un conteneur pour les items ---
+                const itemsContainer = document.createElement('div');
+                itemsContainer.classList.add('ordering-items-container'); // Nouvelle classe CSS
+
+                // --- Ajouter les items DANS ce nouveau conteneur ---
                 shuffleArray([...question.items]).forEach(itemText => {
                     const itemDiv = document.createElement('div'); itemDiv.classList.add('ordering-item'); itemDiv.setAttribute('draggable', 'true');
-                    itemDiv.innerHTML = renderMarkdown(itemText); // Use innerHTML for markdown
-                    itemDiv.addEventListener('dragstart', handleDragStart); itemDiv.addEventListener('dragend', handleDragEnd);
-                    optionsDiv.appendChild(itemDiv);
+                    itemDiv.innerHTML = renderMarkdown(itemText);
+                    itemDiv.addEventListener('dragstart', handleDragStart);
+                    itemDiv.addEventListener('dragend', handleDragEnd);
+                    itemsContainer.appendChild(itemDiv); // Append to itemsContainer
                 });
-                optionsDiv.addEventListener('dragover', handleOrderingDragOver); // Use specific handler
-                optionsDiv.addEventListener('dragleave', handleOrderingDragLeave); // Use specific handler
-                optionsDiv.addEventListener('drop', handleOrderingDrop);       // Use specific handler
+
+                // --- Attacher les listeners de drop AU CONTENEUR D'ITEMS ---
+                itemsContainer.addEventListener('dragover', handleOrderingDragOver);
+                itemsContainer.addEventListener('dragleave', handleOrderingDragLeave);
+                itemsContainer.addEventListener('drop', handleOrderingDrop);
+
+                // --- Ajouter le conteneur d'items à la zone d'options ---
+                optionsDiv.appendChild(itemsContainer);
+
+                // --- Ajouter le bouton EN DEHORS du conteneur d'items ---
                 const submitOrderBtn = document.createElement('button');
                 submitOrderBtn.textContent = "Valider l'ordre"; submitOrderBtn.classList.add('btn-primary', 'submit-answer-btn');
                 submitOrderBtn.addEventListener('click', handleAnswerSelection);
-                optionsDiv.appendChild(submitOrderBtn);
-                break;
+                optionsDiv.appendChild(submitOrderBtn); // Append button to optionsDiv, AFTER itemsContainer
+                break; // Fin case 'ordre'
 
             default:
                 optionsDiv.textContent = `Type de question inconnu: ${question.type}`;
@@ -1449,7 +1467,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function handleOrderingDragOver(event) { // Renamed to be specific
         event.preventDefault();
-        const container = event.target.closest('.answer-options.ordre');
+        const container = event.target.closest('.ordering-items-container'); // Cibler container
         if (!container || !draggedItem || container === draggedItem) return;
         event.dataTransfer.dropEffect = 'move';
 
@@ -1469,7 +1487,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     function handleOrderingDragLeave(event) { // Renamed
-        const container = event.target.closest('.answer-options.ordre');
+        const container = event.target.closest('.ordering-items-container'); // Cibler container
         if (container && placeholder && placeholder.parentNode === container && !container.contains(event.relatedTarget)) {
             setTimeout(() => { // Delay removal
                 if (placeholder && placeholder.parentNode === container && !container.matches(':hover')) {
@@ -1481,9 +1499,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function handleOrderingDrop(event) { // Renamed
         event.preventDefault();
-        const container = event.target.closest('.answer-options.ordre');
+        const container = event.target.closest('.ordering-items-container'); // Cibler container
         if (container && draggedItem && placeholder && placeholder.parentNode === container) {
-            container.insertBefore(draggedItem, placeholder); // Insert item before placeholder
+            container.insertBefore(draggedItem, placeholder);
         }
         // Cleanup handled by dragend
     }
@@ -1685,9 +1703,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             case 'ordre':
-                if (!targetElement.classList.contains('submit-answer-btn')) return; // Only trigger on submit button
-                userAnswer = Array.from(questionBlock.querySelectorAll('.answer-options.ordre .ordering-item'))
-                    .map(item => item.textContent); // Get text content in current order
+                if (!targetElement.classList.contains('submit-answer-btn')) return;
+                // --- MODIFIER ICI pour cibler le bon conteneur ---
+                const itemsContainerForOrder = questionBlock.querySelector('.ordering-items-container');
+                if (!itemsContainerForOrder) { isValidInput = false; break; } // Sécurité
+                userAnswer = Array.from(itemsContainerForOrder.querySelectorAll('.ordering-item'))
+                    .map(item => item.textContent);
                 break;
             default:
                 console.error("Unknown question type in handleAnswerSelection:", question.type);
@@ -1761,20 +1782,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 break;
             case 'ordre':
-                // Reconstruct the order - assumes answer is the ordered array of textContents
-                const currentItems = Array.from(questionBlock.querySelectorAll('.answer-options.ordre .ordering-item'));
-                const container = questionBlock.querySelector('.answer-options.ordre');
-                if (!container) break;
-                // Clear container first (except submit button)
-                const submitBtn = container.querySelector('.submit-answer-btn');
-                container.innerHTML = ''; // Clear
-                // Append items in the saved order
+                const currentItems = Array.from(questionBlock.querySelectorAll('.ordering-items-container .ordering-item')); // Cibler container
+                const container = questionBlock.querySelector('.ordering-items-container'); // Cibler container
+                if (!container || !answer || !Array.isArray(answer)) break; // Vérifier answer
+                // Vider seulement le conteneur d'items
+                container.innerHTML = '';
+                // Ré-append items dans le bon ordre
                 answer.forEach(itemText => {
                     const item = currentItems.find(el => el.textContent === itemText);
                     if (item) container.appendChild(item);
                 });
-                if (submitBtn) container.appendChild(submitBtn); // Re-append button
-                break;
+                break; // Fin case ordre
             case 'association':
                 // Reconstruct matched pairs - answer is { targetId: itemId }
                 const leftContainer = questionBlock.querySelector('.matching-column[id^="matching-left-"]');
@@ -2013,6 +2031,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         console.log(`Forcing quiz finish. Timed out: ${timedOut}`);
         isQuizActive = false;
+        updateSettingsButtonVisibility();
         clearInterval(timerInterval);
         if (!quizEndTime) quizEndTime = Date.now();
 
@@ -2041,6 +2060,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isQuizActive) return;
         if (confirm("Êtes-vous sûr de vouloir abandonner cette session ? Votre progression ne sera pas sauvegardée.")) {
             isQuizActive = false;
+            updateSettingsButtonVisibility();
             clearInterval(timerInterval);
             // Reset state *without* saving attempt
             // Keep quizLibrary, localHistory, localStats, userPreferences
@@ -2061,6 +2081,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Results Logic ---
 
     function showResults() {
+        isQuizActive = false;
+        updateSettingsButtonVisibility();
         if (!quizEndTime) quizEndTime = Date.now(); // Ensure end time
         clearInterval(timerInterval); // Ensure timer stopped
 
@@ -2437,6 +2459,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Settings & Stats Logic ---
 
+    /** Met à jour la visibilité du bouton raccourci Paramètres */
+    function updateSettingsButtonVisibility() {
+        if (settingsButton) { // Vérifie si le bouton a été créé
+            settingsButton.classList.toggle('hidden', isQuizActive);
+        } else {
+            console.warn("Bouton Paramètres dynamique non trouvé pour mise à jour visibilité.");
+        }
+    }
+
     function renderSettingsScreen() {
         // Apply preferences to controls
         themeSelect.value = userPreferences.theme;
@@ -2780,6 +2811,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         applyTheme(userPreferences.theme);
         setupEventListeners();
+        updateSettingsButtonVisibility();
         showScreen('dashboard'); // Start on dashboard
         hideLoader();
         console.log("Initialization Complete.");
@@ -2834,16 +2866,26 @@ document.addEventListener('DOMContentLoaded', () => {
         backToDashboardFromSettingsBtn.addEventListener('click', () => showScreen('dashboard')); // Button to go back
 
         // Add listener to show Settings screen (e.g., a button somewhere?)
-        // TEMP: For testing, add a button to the dashboard footer or header
-        const settingsButtonTemp = document.createElement('button');
-        settingsButtonTemp.textContent = '⚙️ Paramètres';
-        settingsButtonTemp.style.position = 'fixed';
-        settingsButtonTemp.style.bottom = '10px';
-        settingsButtonTemp.style.left = '10px';
-        settingsButtonTemp.style.zIndex = '1000';
-        settingsButtonTemp.classList.add('btn-secondary');
-        settingsButtonTemp.addEventListener('click', () => showScreen('settings'));
-        document.body.appendChild(settingsButtonTemp); // Add directly to body for now
+        settingsButton = document.createElement('button');
+        settingsButton.id = 'dynamic-settings-btn'; // Donner un ID pour référence potentielle
+        settingsButton.textContent = '⚙️ Paramètres';
+        settingsButton.style.position = 'fixed';
+        settingsButton.style.bottom = '15px'; // Utiliser les valeurs CSS si possible
+        settingsButton.style.left = '15px';
+        settingsButton.style.zIndex = '1010';
+        settingsButton.classList.add('btn-secondary', 'btn-icon'); // Utiliser btn-icon pour le style
+        settingsButton.title = "Paramètres & Statistiques"; // Tooltip
+
+        // Listener pour le bouton Paramètres DYNAMIQUE
+        settingsButton.addEventListener('click', () => {
+            if (isQuizActive) {
+                // Sécurité: Ne devrait pas être cliquable car caché
+                console.warn("Clic sur bouton Paramètres pendant quiz actif (devrait être caché).");
+                return;
+            }
+            showScreen('settings');
+        });
+        document.body.appendChild(settingsButton);
 
         console.log("Event listeners setup complete.");
     }
