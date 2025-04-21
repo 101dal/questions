@@ -3,7 +3,7 @@ import { state, resetQuizState, setQuizActive, setActiveQuizContent, resetSelect
 import { PRESETS, ADVANCE_DELAY, FEEDBACK_DELAY, TIME_WARNING_THRESHOLD, TIME_CRITICAL_THRESHOLD } from './config.js';
 import { saveLastConfig, loadLastConfig, loadLocalHistory, saveQuizAttempt } from './storage.js';
 import { showToast, playSound, showScreen, renderMarkdown } from './ui.js';
-import { shuffleArray } from './utils.js';
+import { getAnswerFormat, levenshtein, shuffleArray } from './utils.js';
 import { createQuestionBlock } from './questionRenderer.js';
 import { showResults, handleReturnItemToLeft } from './results.js'; // Import showResults and handleReturnItemToLeft
 import { recalculateLocalStats } from './stats.js'; // Import stat calculation
@@ -72,8 +72,8 @@ export function startQuiz() {
             });
 
             if (errorQuestionsFound.length === 0 && errorQuestionIds.length > 0) {
-                 console.warn("Error IDs found in history but couldn't match to current questions:", errorQuestionIds);
-                 throw new Error("Impossible de retrouver les questions d'erreur (IDs incohérents ou questions modifiées?).");
+                console.warn("Error IDs found in history but couldn't match to current questions:", errorQuestionIds);
+                throw new Error("Impossible de retrouver les questions d'erreur (IDs incohérents ou questions modifiées?).");
             }
 
             determinedQuestions = shuffleArray([...errorQuestionsFound]); // Shuffle a copy of found errors
@@ -842,90 +842,163 @@ export function updateErrorModeAvailability() {
 /**
 * Generates false answers (distractors) for QCM/QCM-Multi questions.
 */
+/**
+ * Génère des réponses fausses (distracteurs) plus plausibles pour les questions QCM/QCM-Multi.
+ * @param {object} currentQuestion L'objet question actuel.
+ * @param {Array} allQuestions Tous les objets questions du quiz.
+ * @param {object|null} dummyAnswersData L'objet dummyAnswers du JSON.
+ * @param {Array} excludedAnswers Réponses spécifiques à exclure (en plus de la bonne réponse).
+ * @returns {Array<string>} Un tableau de jusqu'à 3 chaînes de distracteurs uniques.
+ */
 export function generateFalseAnswers(currentQuestion, allQuestions, dummyAnswersData, excludedAnswers = []) {
     const correctAnswer = currentQuestion.correctAnswer;
-    const correctAnswersArray = Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer];
+    const correctAnswersArray = Array.isArray(correctAnswer) ? correctAnswer.map(String) : [String(correctAnswer)]; // Tableau de strings
+    const correctAnswersLower = new Set(correctAnswersArray.map(a => a.toLowerCase()));
 
-    // Build the set of excluded answers (case-insensitive string comparison)
-    const finalExcluded = new Set(
-        [...correctAnswersArray, ...excludedAnswers]
-            .map(a => String(a).toLowerCase())
-    );
+    // --- Ensemble des réponses à exclure (bonnes réponses + celles passées en argument) ---
+    const excludedLower = new Set([
+        ...correctAnswersLower,
+        ...excludedAnswers.map(a => String(a).toLowerCase())
+    ]);
 
-    let potentialFalsePool = new Set();
+    // --- Analyse de la bonne réponse principale (la première si QCM-Multi) ---
+    const primaryCorrectAnswer = correctAnswersArray[0];
+    const targetFormat = getAnswerFormat(primaryCorrectAnswer);
+    const targetLength = primaryCorrectAnswer.length;
 
-    const addAnswerToPool = (answer) => {
-        const answerType = typeof answer;
-        let answerStr = '';
-        let isValid = false;
+    // --- Collecte des distracteurs potentiels par source et priorité ---
+    let potentialPool = []; // Contiendra des objets { text: string, sourcePriority: number, formatMatch: boolean, distance: number }
 
-        if (answerType === 'string' && answer.trim() !== '') {
-            answerStr = answer;
-            isValid = true;
-        } else if (answerType === 'boolean') {
-            answerStr = answer ? 'Vrai' : 'Faux'; // Use consistent string representation
-            isValid = true;
+    const addAnswerToPool = (answer, sourcePriority) => {
+        const answerStr = String(answer);
+        const answerStrLower = answerStr.toLowerCase();
+
+        // Vérifie si valide, non exclu et non vide
+        if (answerStr.trim() === '' || excludedLower.has(answerStrLower) || correctAnswersLower.has(answerStrLower)) {
+            return;
         }
-        // Ignore other types
 
-        if (isValid) {
-            const answerStrLower = answerStr.toLowerCase();
-            if (!finalExcluded.has(answerStrLower)) {
-                potentialFalsePool.add(answerStr); // Add the standardized string form
-            }
-        }
+        // Calcule les métriques de pertinence
+        const format = getAnswerFormat(answerStr);
+        const formatMatch = (format === targetFormat);
+        // Distance Levenshtein (plus bas = plus similaire)
+        const distance = levenshtein(primaryCorrectAnswer, answerStr);
+
+        potentialPool.push({
+            text: answerStr, // Garde la casse originale
+            lowerText: answerStrLower, // Pour la déduplication
+            sourcePriority: sourcePriority, // 1 = meilleure source
+            formatMatch: formatMatch,
+            distance: distance,
+            lengthDiff: Math.abs(answerStr.length - targetLength)
+        });
     };
 
-    // --- Populate pool (order matters) ---
-    // 1. Dummies from same category
-    if (dummyAnswersData && currentQuestion.category && dummyAnswersData[currentQuestion.category]) {
-        dummyAnswersData[currentQuestion.category].forEach(addAnswerToPool);
-    }
-    // 2. Global Dummies
-    if (dummyAnswersData && dummyAnswersData.Global) {
-        dummyAnswersData.Global.forEach(addAnswerToPool);
-    }
-    // 3. Correct answers from *other* questions (prefer same category)
-    const otherQuestions = allQuestions.filter(q => q !== currentQuestion);
-    // Same category first
-    otherQuestions.forEach(q => {
-        if (q.category === currentQuestion.category) {
-            if (typeof q.correctAnswer === 'string' || typeof q.correctAnswer === 'boolean') addAnswerToPool(q.correctAnswer);
-            else if (Array.isArray(q.correctAnswer)) q.correctAnswer.forEach(item => { if (typeof item === 'string' || typeof item === 'boolean') addAnswerToPool(item); });
-        }
-    });
-    // Then other categories
-    otherQuestions.forEach(q => {
-        if (q.category !== currentQuestion.category) {
-            if (typeof q.correctAnswer === 'string' || typeof q.correctAnswer === 'boolean') addAnswerToPool(q.correctAnswer);
-            else if (Array.isArray(q.correctAnswer)) q.correctAnswer.forEach(item => { if (typeof item === 'string' || typeof item === 'boolean') addAnswerToPool(item); });
-        }
-    });
-    // 4. Dummies from other categories
-    if (dummyAnswersData) {
-        for (const cat in dummyAnswersData) {
-            if (cat !== currentQuestion.category && cat !== "Global") {
-                dummyAnswersData[cat].forEach(addAnswerToPool);
+    // --- Ordre de remplissage (priorité décroissante) ---
+    const sources = [
+        // 1. Dummies même catégorie
+        () => {
+            if (dummyAnswersData && currentQuestion.category && dummyAnswersData[currentQuestion.category]) {
+                dummyAnswersData[currentQuestion.category].forEach(d => addAnswerToPool(d, 1));
             }
+        },
+        // 2. Dummies globaux
+        () => {
+            if (dummyAnswersData && dummyAnswersData.Global) {
+                dummyAnswersData.Global.forEach(d => addAnswerToPool(d, 2));
+            }
+        },
+        // 3. Bonnes réponses autres questions (même catégorie)
+        () => {
+            allQuestions.forEach(q => {
+                if (q !== currentQuestion && q.category === currentQuestion.category) {
+                    const otherCorrect = q.correctAnswer;
+                    if (Array.isArray(otherCorrect)) otherCorrect.forEach(item => addAnswerToPool(item, 3));
+                    else addAnswerToPool(otherCorrect, 3);
+                }
+            });
+        },
+        // 4. Bonnes réponses autres questions (autres catégories) - Priorité plus basse
+        () => {
+            allQuestions.forEach(q => {
+                if (q !== currentQuestion && q.category !== currentQuestion.category) {
+                    const otherCorrect = q.correctAnswer;
+                    if (Array.isArray(otherCorrect)) otherCorrect.forEach(item => addAnswerToPool(item, 4));
+                    else addAnswerToPool(otherCorrect, 4);
+                }
+            });
+        },
+        // 5. Dummies autres catégories - Priorité la plus basse
+        () => {
+            if (dummyAnswersData) {
+                for (const cat in dummyAnswersData) {
+                    if (cat !== currentQuestion.category && cat !== "Global") {
+                        dummyAnswersData[cat].forEach(d => addAnswerToPool(d, 5));
+                    }
+                }
+            }
+        },
+    ];
+
+    // Remplir le pool en suivant les priorités
+    sources.forEach(fillFunc => fillFunc());
+
+    // --- Déduplication basée sur le texte en minuscules ---
+    const uniquePoolMap = new Map();
+    potentialPool.forEach(item => {
+        if (!uniquePoolMap.has(item.lowerText)) {
+            uniquePoolMap.set(item.lowerText, item);
         }
-    }
+        // Optionnel : si on trouve un doublon, garder celui avec la meilleure sourcePriority ?
+        // else {
+        //     const existing = uniquePoolMap.get(item.lowerText);
+        //     if (item.sourcePriority < existing.sourcePriority) {
+        //         uniquePoolMap.set(item.lowerText, item);
+        //     }
+        // }
+    });
+    const uniquePool = Array.from(uniquePoolMap.values());
 
-    // --- Select final options ---
-    let shuffledPool = shuffleArray(Array.from(potentialFalsePool));
-    let falseOptions = shuffledPool.slice(0, 3); // Aim for 3 distractors
 
-    // Fallback if needed
+    // --- Tri du pool unique pour sélectionner les meilleurs candidats ---
+    uniquePool.sort((a, b) => {
+        // 1. Priorité à la source (plus bas = mieux)
+        if (a.sourcePriority !== b.sourcePriority) return a.sourcePriority - b.sourcePriority;
+        // 2. Priorité au format correspondant
+        if (a.formatMatch !== b.formatMatch) return a.formatMatch ? -1 : 1; // true vient avant false
+        // 3. Priorité à la distance Levenshtein (légèrement différente est bien, trop proche ou trop loin est moins bien)
+        //    On cherche une distance > 0 mais pas trop grande. Peut-être cibler distance 1-5 ?
+        const idealDistanceMin = 1;
+        const idealDistanceMax = Math.max(5, Math.floor(targetLength * 0.5)); // Ex: 1 à 5, ou jusqu'à 50% de la longueur
+        const aIsIdeal = a.distance >= idealDistanceMin && a.distance <= idealDistanceMax;
+        const bIsIdeal = b.distance >= idealDistanceMin && b.distance <= idealDistanceMax;
+        if (aIsIdeal !== bIsIdeal) return aIsIdeal ? -1 : 1; // Idéal vient avant
+        // Si les deux sont idéaux ou non idéaux, préférer la distance la plus petite (mais > 0)
+        if (a.distance !== b.distance) return a.distance - b.distance;
+        // 4. Priorité à la différence de longueur la plus faible
+        if (a.lengthDiff !== b.lengthDiff) return a.lengthDiff - b.lengthDiff;
+        // 5. Fallback (juste pour être stable)
+        return a.lowerText.localeCompare(b.lowerText);
+    });
+
+    // --- Sélectionner les 3 meilleurs et retourner leur texte original ---
+    const finalDistractors = uniquePool.slice(0, 3).map(item => item.text);
+
+    // --- Fallback si moins de 3 options ---
     let fallbackCounter = 1;
-    while (falseOptions.length < 3) {
-        const placeholder = `Option ${fallbackCounter + correctAnswersArray.length}`; // Try to make unique
-        if (!finalExcluded.has(placeholder.toLowerCase()) && !falseOptions.includes(placeholder)) {
-            falseOptions.push(placeholder);
+    while (finalDistractors.length < 3) {
+        const placeholder = `Autre réponse ${fallbackCounter}`;
+        // S'assurer que le fallback n'est pas une bonne réponse ou déjà dans les distracteurs
+        if (!correctAnswersLower.has(placeholder.toLowerCase()) &&
+            !finalDistractors.some(d => d.toLowerCase() === placeholder.toLowerCase())) {
+            finalDistractors.push(placeholder);
         }
         fallbackCounter++;
         if (fallbackCounter > 10) break; // Safety break
     }
 
-    return falseOptions.slice(0, 3);
+    console.log(`Generated distractors for "${primaryCorrectAnswer}":`, finalDistractors);
+    return finalDistractors;
 }
 
 
