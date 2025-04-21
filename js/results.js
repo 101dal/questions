@@ -1,39 +1,52 @@
 import * as dom from './dom.js';
-import { state, resetQuizState, setActiveQuizContent, setQuizActive } from './state.js';
+import { state, resetQuizState, setActiveQuizContent } from './state.js';
 import { showToast, playSound, showScreen, renderMarkdown } from './ui.js';
 import { saveQuizAttempt, saveLocalHistory, loadQuizContent } from './storage.js';
-import { recalculateLocalStats, getBadgeInfo } from './stats.js';
-import { startQuiz, setupQuizUI, displayQuestion, updateErrorModeAvailability, resetConfigOptions } from './quizEngine.js'; // Import functions needed for restarting
-import { renderQuizLibrary, displayScoreHistory, populateHistoryFilter } from './main.js'; // Import functions from main for navigation/UI updates
+// --- Importations modifiées ---
+import { recalculateLocalStats, getBadgeInfo, checkAndAwardBadges } from './stats.js';
+// -----------------------------
+import { startQuiz, setupQuizUI, displayQuestion, updateErrorModeAvailability, resetConfigOptions } from './quizEngine.js';
+import { renderQuizLibrary, displayScoreHistory, populateHistoryFilter } from './main.js'; // Gardez les imports de main
 import { shuffleArray } from './utils.js';
 
 
 export function showResults() {
-    setQuizActive(false); // Ensure quiz is marked inactive
-    // updateSettingsButtonVisibility(); // Should be called from main after state change
-    if (!state.quizEndTime) state.quizEndTime = Date.now(); // Ensure end time
-    if (state.timerInterval) clearInterval(state.timerInterval); // Ensure timer stopped
+    setQuizActive(false);
+    if (!state.quizEndTime) state.quizEndTime = Date.now();
+    if (state.timerInterval) clearInterval(state.timerInterval);
     state.timerInterval = null;
 
-
-    // Final Calculations
+    // --- Calculs de session ---
     const timeElapsedSeconds = Math.max(0, (state.quizEndTime - state.startTime) / 1000);
     const minutes = Math.floor(timeElapsedSeconds / 60);
     const seconds = Math.floor(timeElapsedSeconds % 60);
     const timeTakenString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     const accuracy = state.questionsToAsk.length > 0 ? ((state.score / state.questionsToAsk.length) * 100) : 0;
 
-    // Populate Summary UI
+    // --- Préparer les données pour la vérification des badges de session ---
+    const sessionDataForBadges = {
+        accuracy: accuracy,
+        maxStreak: state.maxStreak,
+        timeElapsedSeconds: timeElapsedSeconds,
+        numQuestions: state.questionsToAsk.length,
+        quizId: state.currentQuizConfig.quizId, // Ajouter l'ID du quiz si besoin
+        // Ajoutez d'autres données de session si nécessaire pour des badges spécifiques
+    };
+
+    // --- Vérifier et obtenir les badges NOUVELLEMENT gagnés dans CETTE session ---
+    // Note: checkAndAwardBadges mettra aussi à jour state.localStats.badges globalement
+    const newlyEarnedBadges = checkAndAwardBadges(sessionDataForBadges, 'session');
+
+    // --- Afficher les badges NOUVELLEMENT gagnés sur l'écran de résultats ---
+    displayAchievements(newlyEarnedBadges); // Passer uniquement les nouveaux
+
+    // --- Remplir le résumé UI ---
     dom.results.quizTitle.textContent = state.currentQuizConfig.quizTitle;
     dom.results.scoreSummary.textContent = `Score: ${state.score} / ${state.questionsToAsk.length} (${state.totalPoints} pts)`;
     dom.results.timeTakenDisplay.textContent = `Temps: ${timeTakenString}`;
     dom.results.accuracyDisplay.textContent = `Précision: ${accuracy.toFixed(1)}%`;
 
-    // Calculate Achievements (Local Example)
-    const achievements = calculateLocalAchievements(accuracy, state.maxStreak, timeElapsedSeconds, state.questionsToAsk.length);
-    displayAchievements(achievements);
-
-    // Prepare attempt data for history
+    // --- Préparer les données de la tentative pour l'historique ---
     const attemptData = {
         attemptId: `local_${Date.now()}_${Math.random().toString(16).substring(2, 8)}`,
         quizId: state.currentQuizConfig.quizId,
@@ -47,59 +60,53 @@ export function showResults() {
         date: new Date(state.startTime).toISOString(),
         totalQuestions: state.questionsToAsk.length,
         maxStreak: state.maxStreak,
-        achievements: achievements.map(a => a.id),
-        answers: state.userAnswers.map(a => ({ // Store minimal answer info
+        // --- Sauvegarder les IDs des badges gagnés PENDANT cette session ---
+        achievements: newlyEarnedBadges.map(badge => badge.id),
+        answers: state.userAnswers.map(a => ({
             questionId: a?.questionId,
             isCorrect: a?.isCorrect,
             marked: a?.marked,
-            // answer: a?.answer // Optional: store user answer value
         }))
     };
 
-    saveQuizAttempt(attemptData); // Save to local history
-    recalculateLocalStats(); // Update stats based on the new history entry
-    saveLocalHistory();      // Persist the updated history immediately
+    // --- Sauvegarde et mise à jour des stats globales ---
+    saveQuizAttempt(attemptData);   // Sauvegarde la tentative dans l'historique
+    recalculateLocalStats();    // Recalcule TOUTES les stats globales (ce qui revérifiera les badges 'global')
 
-    // Display detailed results and comparison AFTER saving/recalculating
-    displayDetailedResults();
-    displayLocalComparison();
+    // --- Affichage final ---
+    displayDetailedResults();   // Affiche le détail des réponses
+    displayLocalComparison();   // Affiche la comparaison avec les sessions précédentes
 
-    // Show/hide restart errors button
     const hasErrors = state.userAnswers.some(a => a && !a.isCorrect);
     const errorCount = state.userAnswers.filter(a => a && !a.isCorrect).length;
     dom.results.restartErrorsBtn.classList.toggle('hidden', !hasErrors);
     dom.results.restartErrorsBtn.textContent = `Refaire les erreurs (${errorCount})`;
 
-    showScreen('results');
+    // Montre l'écran (géré par main.js après l'appel)
+    // showScreen('results');
     playSound('finish');
 
-    // Refresh history display on dashboard in background (needs access to those functions)
-    displayScoreHistory();
-    populateHistoryFilter();
+    // Rafraîchit l'historique sur le dashboard (appelé depuis main.js)
+    // displayScoreHistory();
+    // populateHistoryFilter();
 }
 
 
-function calculateLocalAchievements(accuracy, maxStreak, timeElapsedSeconds, numQuestions) {
-    const achievements = [];
-    if (accuracy >= 100 && numQuestions > 0) achievements.push({ id: 'perfect_score', name: 'Score Parfait ! 🎉' });
-    if (maxStreak >= 10) achievements.push({ id: 'streak_10', name: `Série de ${maxStreak} 🔥` });
-    else if (maxStreak >= 5) achievements.push({ id: 'streak_5', name: `Série de ${maxStreak} 🔥` });
-    // Add more specific streak badges if needed (e.g., streak_15, streak_20) using the exact maxStreak value
-    if (timeElapsedSeconds < 60 && numQuestions >= 10) achievements.push({ id: 'quick', name: 'Rapide ! ⚡️' });
-    // 'first_quiz' badge is typically added during stat recalculation, not here.
-    return achievements;
-}
+// --- La fonction displayAchievements affiche maintenant les badges passés en argument ---
+function displayAchievements(achievementsToDisplay = []) { // Prend un argument
+    dom.results.achievementsDiv.innerHTML = '';
+    dom.results.achievementsDiv.classList.toggle('hidden', achievementsToDisplay.length === 0);
 
-function displayAchievements(achievements = []) {
-    dom.results.achievementsDiv.innerHTML = ''; // Clear previous
-    dom.results.achievementsDiv.classList.toggle('hidden', achievements.length === 0);
-    achievements.forEach(ach => {
-        const badgeInfo = getBadgeInfo(ach.id); // Get full info (name, icon, desc)
+    if (achievementsToDisplay.length > 0) {
+        // Optionnel: Ajouter un petit titre
+        // dom.results.achievementsDiv.innerHTML = '<h4>Nouveaux Badges !</h4>';
+    }
+
+    achievementsToDisplay.forEach(badgeInfo => { // Utilise les infos complètes du badge
         const badge = document.createElement('span');
         badge.classList.add('achievement-badge');
-        badge.textContent = badgeInfo.name; // Use name from badge info
-        badge.title = badgeInfo.description; // Add description as tooltip
-        // Optionally add an icon: badge.innerHTML = `<img src='${badgeInfo.icon_url}' alt=''> ${badgeInfo.name}`;
+        badge.textContent = badgeInfo.name;
+        badge.title = badgeInfo.description;
         dom.results.achievementsDiv.appendChild(badge);
     });
 }

@@ -1,6 +1,66 @@
+// js/stats.js
+
 import { state } from './state.js';
 import { saveLocalStats } from './storage.js';
 import * as dom from './dom.js'; // Need settings screen elements
+// --- Importation des définitions ---
+import { BADGE_DEFINITIONS } from './badgesConfig.js';
+
+/**
+ * Récupère les informations d'affichage d'un badge par son ID.
+ */
+export function getBadgeInfo(badgeId) {
+    const badgeDef = BADGE_DEFINITIONS.find(b => b.id === badgeId);
+    const defaultBadge = {
+        id: badgeId,
+        name: badgeId, // Fallback name
+        description: `Badge: ${badgeId}`,
+        icon_url: "assets/images/default_badge.png" // Fallback icon
+    };
+    // Retourne la définition trouvée ou un objet par défaut, en s'assurant que l'ID est toujours présent
+    // Fusionne l'objet trouvé avec defaultBadge pour garantir que toutes les clés existent
+    return badgeDef ? { ...defaultBadge, ...badgeDef } : defaultBadge;
+}
+
+/**
+ * Vérifie les conditions des badges et met à jour state.localStats.badges.
+ * @param {object} data - Les données à utiliser pour la vérification (dépend du type).
+ * @param {'session'|'global'} checkType - Le type de vérification à effectuer ('session' ou 'global').
+ * @returns {Array<object>} Un tableau des badges NOUVELLEMENT obtenus lors de cette vérification (contenant les infos complètes du badge via getBadgeInfo).
+ */
+export function checkAndAwardBadges(data, checkType) {
+    const newlyEarnedBadgesInfo = [];
+    // Utilise une copie des badges ACTUELS de l'état pour la vérification
+    const currentBadges = new Set(state.localStats.badges || []);
+    let badgesUpdated = false; // Flag to check if state needs saving
+
+    BADGE_DEFINITIONS.forEach(badge => {
+        // Vérifie uniquement les badges du type demandé ET qui n'ont pas déjà été obtenus
+        if (badge.type === checkType && !currentBadges.has(badge.id)) {
+            try {
+                if (badge.checkCondition(data)) {
+                    // Condition remplie ET badge non possédé !
+                    currentBadges.add(badge.id); // Ajoute à l'ensemble des badges possédés
+                    newlyEarnedBadgesInfo.push(getBadgeInfo(badge.id)); // Stocke les infos complètes du badge
+                    badgesUpdated = true; // Marque qu'une mise à jour a eu lieu
+                    console.log(`Badge '${badge.id}' earned!`);
+                }
+            } catch (error) {
+                console.error(`Error checking badge condition for '${badge.id}':`, error);
+            }
+        }
+    });
+
+    // Met à jour l'état global et sauvegarde SEULEMENT si de nouveaux badges ont été ajoutés
+    if (badgesUpdated) {
+        state.localStats.badges = Array.from(currentBadges).sort(); // Met à jour l'état global avec la liste triée
+        saveLocalStats(); // Sauvegarde immédiatement l'état mis à jour
+        console.log("Badge list updated in state and saved.");
+    }
+
+    return newlyEarnedBadgesInfo; // Retourne uniquement les infos des badges gagnés lors de CET appel
+}
+
 
 /** Recalculates all local statistics based on the current localHistory */
 export function recalculateLocalStats() {
@@ -10,18 +70,17 @@ export function recalculateLocalStats() {
     let totalPointsAgg = 0;
     let longestStreakOverall = 0;
     const quizStatsMap = {}; // { quizId: { attempts, totalQ, correctQ, totalPts, avgAccuracy, bestScoreNum, bestScoreDen, bestPoints, bestScore } }
-    // Start with currently known badges (from loaded stats)
-    const earnedBadgeIds = new Set(state.localStats.badges || []);
+    // Charge les badges déjà obtenus pour ne pas les perdre
+    const previouslyEarnedBadges = new Set(state.localStats.badges || []);
 
-    // Use attemptId for unique quiz attempts count if available, otherwise fallback
+    // Utilise attemptId pour un compte unique si possible
     const attemptIds = new Set(state.localHistory.map(a => a.attemptId).filter(Boolean));
-    totalQuizzes = attemptIds.size > 0 ? attemptIds.size : state.localHistory.length; // Fallback to length if no IDs
+    totalQuizzes = attemptIds.size > 0 ? attemptIds.size : state.localHistory.length;
 
     state.localHistory.forEach(attempt => {
         const qId = attempt.quizId;
-        if (!qId) return; // Skip attempts without quizId
+        if (!qId) return;
 
-        // Initialize stats for this quiz if not present
         if (!quizStatsMap[qId]) {
             quizStatsMap[qId] = { attempts: 0, totalQ: 0, correctQ: 0, totalPts: 0, avgAccuracy: 0, bestScoreNum: -1, bestScoreDen: 0, bestPoints: -Infinity, bestScore: 'N/A' };
         }
@@ -29,22 +88,21 @@ export function recalculateLocalStats() {
 
         stats.attempts++;
         const attemptTotalQ = attempt.totalQuestions || attempt.answers?.length || 0;
-        // Parse score carefully, handling potential 'N/A' or malformed strings
         const scoreParts = String(attempt.score || '0/0').split('/');
         let attemptCorrect = 0;
-        let attemptTotal = attemptTotalQ; // Default to total questions if score is bad
+        let attemptTotal = attemptTotalQ;
         if (scoreParts.length === 2) {
             const parsedCorrect = parseInt(scoreParts[0], 10);
             const parsedTotal = parseInt(scoreParts[1], 10);
             if (!isNaN(parsedCorrect)) attemptCorrect = parsedCorrect;
-            // Use parsed total from score string if valid, otherwise keep attemptTotalQ
             if (!isNaN(parsedTotal) && parsedTotal > 0) attemptTotal = parsedTotal;
-            else if (attemptCorrect > attemptTotalQ) attemptTotal = attemptCorrect; // Fix denominator if score looks like X/0
+            else if (attemptCorrect > attemptTotalQ) attemptTotal = attemptCorrect;
         }
 
         const attemptPoints = attempt.points ?? 0;
 
-        totalAnswers += attemptTotal; // Use the more reliable total count
+        // Utilise attemptTotal (plus fiable) pour les stats globales
+        totalAnswers += attemptTotal;
         correctAnswers += attemptCorrect;
         totalPointsAgg += attemptPoints;
         longestStreakOverall = Math.max(longestStreakOverall, attempt.maxStreak || 0);
@@ -53,24 +111,25 @@ export function recalculateLocalStats() {
         stats.correctQ += attemptCorrect;
         stats.totalPts += attemptPoints;
 
-        // Update best score logic
+        // Update best score
         if (attemptCorrect > stats.bestScoreNum) {
             stats.bestScoreNum = attemptCorrect;
             stats.bestScoreDen = attemptTotal;
             stats.bestPoints = attemptPoints;
         } else if (attemptCorrect === stats.bestScoreNum && attemptPoints > stats.bestPoints) {
-            // Prioritize higher points for the same score
             stats.bestPoints = attemptPoints;
-            stats.bestScoreDen = attemptTotal; // Update denominator too
+            stats.bestScoreDen = attemptTotal;
         }
 
-        // Add badges earned in this attempt
-        (attempt.achievements || []).forEach(badgeId => {
-            if (typeof badgeId === 'string') earnedBadgeIds.add(badgeId);
-        });
+        // Collecte les badges de cette session (ils seront revérifiés globalement plus tard si besoin)
+        // (On ne fait que collecter ici, la vérification globale se fait après)
+        // (commenté car checkAndAwardBadges gère l'ajout)
+        // (attempt.achievements || []).forEach(badgeId => {
+        //     if (typeof badgeId === 'string') previouslyEarnedBadges.add(badgeId);
+        // });
     });
 
-    // Calculate final averages and best scores after iterating through history
+    // Calculate final averages and best scores
     const avgAccuracyOverall = totalAnswers > 0 ? (correctAnswers / totalAnswers * 100) : 0;
     Object.keys(quizStatsMap).forEach(qId => {
         const stats = quizStatsMap[qId];
@@ -78,30 +137,27 @@ export function recalculateLocalStats() {
         if (stats.bestScoreNum >= 0) {
             stats.bestScore = `${stats.bestScoreNum} / ${stats.bestScoreDen}`;
         } else {
-            stats.bestScore = 'N/A'; // Ensure reset if no valid score found
+            stats.bestScore = 'N/A';
         }
     });
 
-    // Simple Level/XP System (Example)
+    // Simple Level/XP System
     let currentLevel = 1;
-    let currentXP = totalPointsAgg; // XP = total points earned
+    let currentXP = totalPointsAgg;
     let xpForNext = 100;
-    while (currentXP >= xpForNext && currentLevel < 50) { // Level cap example
+    while (currentXP >= xpForNext && currentLevel < 50) {
         currentXP -= xpForNext;
         currentLevel++;
-        xpForNext = Math.floor(100 * Math.pow(1.2, currentLevel - 1)); // Exponential increase
+        xpForNext = Math.floor(100 * Math.pow(1.2, currentLevel - 1));
     }
 
-    // Add 'first_quiz' badge if history exists and it wasn't already earned
-    if (state.localHistory.length > 0 && !earnedBadgeIds.has('first_quiz')) {
-        earnedBadgeIds.add('first_quiz');
-    }
-
-    // Update global state.localStats object
+    // --- Met à jour l'objet state.localStats AVEC les badges existants ---
+    // On pré-charge les badges existants avant l'appel à checkAndAwardBadges global
     state.localStats = {
+        ...(state.localStats || {}), // Garde la structure précédente si elle existe
         totalQuizzes: totalQuizzes,
         totalAnswers: totalAnswers,
-        correctAnswers: correctAnswers, // Raw count
+        correctAnswers: correctAnswers,
         totalPoints: totalPointsAgg,
         avgAccuracy: avgAccuracyOverall,
         longestStreak: longestStreakOverall,
@@ -109,30 +165,19 @@ export function recalculateLocalStats() {
         level: currentLevel,
         xp: currentXP,
         xpNextLevel: xpForNext,
-        badges: Array.from(earnedBadgeIds).sort() // Store unique badges, sorted
+        badges: Array.from(previouslyEarnedBadges).sort() // Assure que les badges chargés sont présents
     };
 
-    saveLocalStats(); // Persist the recalculated stats
-    console.log("Local stats recalculated and saved.");
+    // --- Vérifie les badges de type 'global' basé sur les stats recalculées ---
+    // Cette fonction met à jour state.localStats.badges directement et sauvegarde si besoin
+    checkAndAwardBadges(state.localStats, 'global');
+
+    console.log("Local stats recalculated.");
+    // Pas besoin de saveLocalStats() ici, car checkAndAwardBadges s'en charge s'il y a eu des changements.
 }
 
+// --- Fonctions de rendu ---
 
-/** Placeholder function to get badge details from a predefined list */
-export function getBadgeInfo(badgeId) {
-    // Define your badges here
-    const badgeDictionary = {
-        "perfect_score": { name: "Score Parfait", icon_url: "assets/images/badge_perfect.png", description: "Quiz terminé avec 100% de bonnes réponses." },
-        "streak_5": { name: "Série de 5", icon_url: "assets/images/badge_streak5.png", description: "Réussi 5 questions d'affilée." },
-        "streak_10": { name: "Série de 10", icon_url: "assets/images/badge_streak10.png", description: "Réussi 10 questions d'affilée." },
-        "quick": { name: "Rapide", icon_url: "assets/images/badge_quick.png", description: "Quiz d'au moins 10 questions terminé en moins d'1 minute." },
-        "first_quiz": { name: "Premiers Pas", icon_url: "assets/images/badge_first.png", description: "Premier quiz terminé." },
-        // Add more... e.g., "quiz_master_X" for mastering a specific quiz (e.g., 3 perfect scores)
-    };
-    const defaultBadge = { name: badgeId, icon_url: "assets/images/default_badge.png", description: `Badge: ${badgeId}` };
-    return badgeDictionary[badgeId] || defaultBadge;
-}
-
-// --- Functions to render stats (could be moved to settings.js or ui.js) ---
 export function renderGlobalStats() {
     dom.settings.totalQuizzesSpan.textContent = state.localStats.totalQuizzes || 0;
     dom.settings.totalAnswersSpan.textContent = state.localStats.totalAnswers || 0;
@@ -157,12 +202,12 @@ export function renderQuizStats() {
             const quizMeta = state.quizLibrary.find(q => q.quizId === quizId);
             const title = quizMeta?.title || `Quiz ID: ${quizId}`;
             tableHTML += `<tr>
-                 <td>${title}</td>
-                 <td style="text-align: center;">${stats.attempts || 0}</td>
-                 <td style="text-align: right;">${(stats.avgAccuracy || 0).toFixed(1)}%</td>
-                 <td style="text-align: center;">${stats.bestScore || 'N/A'}</td>
-                 <td style="text-align: center;">${stats.bestPoints > -Infinity ? (stats.bestPoints ?? '-') : '-'}</td>
-              </tr>`;
+                <td>${title}</td>
+                <td style="text-align: center;">${stats.attempts || 0}</td>
+                <td style="text-align: right;">${(stats.avgAccuracy || 0).toFixed(1)}%</td>
+                <td style="text-align: center;">${stats.bestScore || 'N/A'}</td>
+                <td style="text-align: center;">${stats.bestPoints > -Infinity ? (stats.bestPoints ?? '-') : '-'}</td>
+             </tr>`;
         });
         tableHTML += `</tbody></table>`;
         dom.settings.quizStatsLocalDiv.innerHTML = tableHTML;
@@ -178,15 +223,23 @@ export function renderGamificationStats() {
     if (!state.localStats.badges || state.localStats.badges.length === 0) {
         dom.settings.badgesEarnedLocalDiv.innerHTML = '<p>Aucun badge local débloqué.</p>';
     } else {
-        state.localStats.badges.forEach(badgeId => {
+        // Trie les badges par nom pour l'affichage
+        const sortedBadgeIds = [...state.localStats.badges].sort((a, b) => {
+            const infoA = getBadgeInfo(a);
+            const infoB = getBadgeInfo(b);
+            return infoA.name.localeCompare(infoB.name);
+        });
+
+        sortedBadgeIds.forEach(badgeId => {
             const badgeInfo = getBadgeInfo(badgeId);
             const badgeElement = document.createElement('div');
             badgeElement.classList.add('badge');
             badgeElement.title = badgeInfo.description;
-            // Basic display - assumes icons are available or uses text
-            badgeElement.innerHTML = `
-                 ${badgeInfo.icon_url && !badgeInfo.icon_url.includes('default_badge.png') ? `<img src="${badgeInfo.icon_url}" alt="">` : '🏆'}
-                 <span>${badgeInfo.name}</span>`;
+            // Utilise l'icône si disponible et différente de l'icône par défaut, sinon un emoji
+            const iconHTML = badgeInfo.icon_url && !badgeInfo.icon_url.includes('default_badge.png')
+                ? `<img src="${badgeInfo.icon_url}" alt="">`
+                : '🏆'; // Emoji par défaut
+            badgeElement.innerHTML = `${iconHTML}<span>${badgeInfo.name}</span>`;
             dom.settings.badgesEarnedLocalDiv.appendChild(badgeElement);
         });
     }
