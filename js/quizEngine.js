@@ -1,0 +1,952 @@
+import * as dom from './dom.js';
+import { state, resetQuizState, setQuizActive, setActiveQuizContent, resetSelectionState } from './state.js';
+import { PRESETS, ADVANCE_DELAY, FEEDBACK_DELAY, TIME_WARNING_THRESHOLD, TIME_CRITICAL_THRESHOLD } from './config.js';
+import { saveLastConfig, loadLastConfig, loadLocalHistory, saveQuizAttempt } from './storage.js';
+import { showToast, playSound, showScreen, renderMarkdown } from './ui.js';
+import { shuffleArray } from './utils.js';
+import { createQuestionBlock } from './questionRenderer.js';
+import { showResults, handleReturnItemToLeft } from './results.js'; // Import showResults and handleReturnItemToLeft
+import { recalculateLocalStats } from './stats.js'; // Import stat calculation
+
+// --- Quiz Lifecycle ---
+
+export function startQuiz() {
+    // --- MOVE resetQuizState HERE ---
+    resetQuizState(); // Clear previous quiz state *before* setting up the new one
+
+    if (!state.selectedQuizId || !state.activeQuizContent) {
+        showToast("Veuillez d'abord sélectionner un quiz.", "warning");
+        return;
+    }
+
+    // 1. Read Configuration
+    const selectedMode = document.querySelector('input[name="quiz-mode"]:checked').value;
+    const allowNavBack = dom.dashboard.allowNavigationCheckbox.checked;
+    const instantFeedback = dom.dashboard.instantFeedbackCheckbox.checked;
+    const showExpl = dom.dashboard.showExplOnIncorrectCheckbox.checked && instantFeedback;
+    let numQuestions;
+    let timeLimit = null; // seconds
+    let sourceQuestions = [...state.activeQuizContent.questions];
+    let errorQuestionIds = [];
+    let determinedQuestions = []; // Temporary variable to hold questions before assigning to state
+
+    try {
+        // 2. Determine Questions (Assign to temporary variable first)
+        if (selectedMode === 'all' || selectedMode === 'exam') {
+            determinedQuestions = shuffleArray([...sourceQuestions]); // Shuffle a copy
+        } else if (selectedMode === 'custom') {
+            const customNum = parseInt(dom.dashboard.customQuestionsInput.value, 10);
+            const customTime = parseInt(dom.dashboard.customTimeInput.value, 10);
+            numQuestions = (!isNaN(customNum) && customNum > 0) ? Math.min(customNum, sourceQuestions.length) : sourceQuestions.length;
+            if (!isNaN(customTime) && customTime > 0) timeLimit = customTime * 60;
+            determinedQuestions = shuffleArray([...sourceQuestions]).slice(0, numQuestions); // Shuffle a copy
+        } else if (PRESETS[selectedMode]) {
+            numQuestions = Math.min(PRESETS[selectedMode].questions, sourceQuestions.length);
+            determinedQuestions = shuffleArray([...sourceQuestions]).slice(0, numQuestions); // Shuffle a copy
+        } else if (selectedMode === 'errors') {
+            const sessionsToConsider = parseInt(dom.dashboard.errorSessionsCountInput.value, 10) || 1;
+            loadLocalHistory();
+            const relevantHistory = state.localHistory
+                .filter(attempt => attempt.quizId === state.selectedQuizId)
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .slice(0, sessionsToConsider);
+
+            const incorrectQIds = new Set();
+            relevantHistory.forEach(attempt => {
+                attempt.answers?.forEach(ans => {
+                    if (ans && ans.isCorrect === false && ans.questionId) {
+                        incorrectQIds.add(ans.questionId);
+                    }
+                });
+            });
+
+            errorQuestionIds = Array.from(incorrectQIds);
+            if (errorQuestionIds.length === 0) {
+                throw new Error(`Aucune erreur trouvée dans les ${sessionsToConsider} dernières sessions.`);
+            }
+
+            // Filter sourceQuestions using the standardized ID format
+            const errorQuestionsFound = sourceQuestions.filter(q => {
+                const qIdentifier = q.id || `q_${state.selectedQuizId}_${sourceQuestions.indexOf(q)}`;
+                return errorQuestionIds.includes(qIdentifier);
+            });
+
+            if (errorQuestionsFound.length === 0 && errorQuestionIds.length > 0) {
+                 console.warn("Error IDs found in history but couldn't match to current questions:", errorQuestionIds);
+                 throw new Error("Impossible de retrouver les questions d'erreur (IDs incohérents ou questions modifiées?).");
+            }
+
+            determinedQuestions = shuffleArray([...errorQuestionsFound]); // Shuffle a copy of found errors
+        } else {
+            throw new Error("Mode de quiz inconnu.");
+        }
+
+        // Assign to state *after* successful determination within the try block
+        state.questionsToAsk = determinedQuestions;
+
+
+    } catch (error) {
+        showToast(`Erreur de configuration: ${error.message}`, "error");
+        console.error("Config Error:", error);
+        // resetQuizState(); // State was already reset at the beginning
+        return; // Stop execution
+    }
+
+    // --- FINAL VALIDATION ---
+    if (!state.questionsToAsk || state.questionsToAsk.length === 0) {
+        showToast("Erreur: Aucune question n'a pu être sélectionnée pour cette session.", "error");
+        console.error("Start Quiz Error: state.questionsToAsk is empty after determination block.");
+        // resetQuizState(); // Already reset
+        return; // Stop execution
+    }
+
+    // 3. Save Config & Set Up State (No resetQuizState() here anymore)
+    state.currentQuizConfig = {
+        mode: selectedMode,
+        numQuestions: state.questionsToAsk.length,
+        timeLimit,
+        allowNavBack,
+        instantFeedback,
+        showExpl,
+        quizId: state.selectedQuizId,
+        quizTitle: state.activeQuizContent.quizTitle || "Quiz sans Titre"
+    };
+    state.lastConfig = { // Save UI settings for next time
+        mode: selectedMode,
+        allowNavBack, instantFeedback, showExpl,
+        customTime: dom.dashboard.customTimeInput.value,
+        customQuestions: dom.dashboard.customQuestionsInput.value,
+        errorSessions: dom.dashboard.errorSessionsCountInput.value
+    };
+    saveLastConfig();
+
+    // Assign indices - NOW safe as state.questionsToAsk is populated
+    state.questionsToAsk.forEach((q, idx) => q.originalIndex = sourceQuestions.indexOf(q)); // Store original index if needed
+    state.questionsToAsk.forEach((q, idx) => q.quizSessionIndex = idx); // Index within this specific session
+
+    state.userAnswers = new Array(state.questionsToAsk.length).fill(null);
+    state.startTime = Date.now();
+    setQuizActive(true); // Mark quiz as active
+    state.isSubmittingAnswer = false;
+
+
+    // 4. Setup UI & Start
+    setupQuizUI();
+    // showScreen('quiz'); // Handled by main.js
+    displayQuestion(0); // Display first question (NOW safe)
+    updateErrorModeAvailability();
+}
+
+export function setupQuizUI() {
+    dom.quiz.titleDisplay.textContent = state.currentQuizConfig.quizTitle;
+    dom.quiz.contentArea.innerHTML = '';
+    dom.quiz.finishQuizBtn.classList.add('hidden');
+    dom.quiz.cancelQuizBtn.classList.remove('hidden');
+    dom.quiz.streakCounterDisplay.textContent = `Série: 0 🔥`;
+    dom.quiz.scoreDisplay.textContent = `Score: 0 pts`;
+    updateQuestionGridNav();
+
+    // Timer Setup
+    if (state.timerInterval) clearInterval(state.timerInterval);
+    state.timerInterval = null;
+    dom.quiz.timerDisplay.classList.remove('warning', 'critical');
+    if (state.currentQuizConfig.timeLimit !== null) {
+        state.timeLeft = state.currentQuizConfig.timeLimit;
+        updateTimerDisplay();
+        state.timerInterval = setInterval(handleTimerTick, 1000);
+    } else {
+        state.timeLeft = 0;
+        dom.quiz.timerDisplay.textContent = "Temps: Libre";
+    }
+    updateProgressBar();
+}
+
+export function handleTimerTick() {
+    if (!state.isQuizActive || state.timeLeft === null || state.timeLeft <= 0) {
+        if (state.timerInterval) clearInterval(state.timerInterval);
+        // Double check time is actually 0 or less before forcing finish
+        if (state.timeLeft <= 0 && state.currentQuizConfig.timeLimit !== null && state.isQuizActive) {
+            playSound('error');
+            showToast("Le temps est écoulé !", "warning", 4000);
+            forceFinishQuiz(true); // Time out = true
+        }
+        return;
+    }
+    state.timeLeft--;
+    updateTimerDisplay();
+    if (state.timeLeft <= 0) {
+        // This block now mainly handles the final tick to 0
+        if (state.timerInterval) clearInterval(state.timerInterval);
+        playSound('error');
+        showToast("Le temps est écoulé !", "warning", 4000);
+        forceFinishQuiz(true);
+    } else if (state.timeLeft <= TIME_CRITICAL_THRESHOLD) {
+        dom.quiz.timerDisplay.classList.add('critical');
+        dom.quiz.timerDisplay.classList.remove('warning');
+    } else if (state.timeLeft <= TIME_WARNING_THRESHOLD) {
+        dom.quiz.timerDisplay.classList.add('warning');
+        dom.quiz.timerDisplay.classList.remove('critical');
+    }
+}
+
+export function updateTimerDisplay() {
+    if (!state.isQuizActive && state.timeLeft <= 0 && state.currentQuizConfig.timeLimit !== null) {
+        dom.quiz.timerDisplay.textContent = "Temps écoulé !";
+        dom.quiz.timerDisplay.classList.remove('warning', 'critical');
+        return;
+    }
+    if (state.currentQuizConfig.timeLimit === null) {
+        dom.quiz.timerDisplay.textContent = "Temps: Libre";
+        return;
+    }
+    const displayTime = Math.max(0, state.timeLeft);
+    const minutes = Math.floor(displayTime / 60);
+    const seconds = displayTime % 60;
+    dom.quiz.timerDisplay.textContent = `Temps: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+export function updateProgressBar() {
+    const answeredCount = state.userAnswers.filter(a => a !== null).length;
+    const progressPercent = state.questionsToAsk.length > 0 ? (answeredCount / state.questionsToAsk.length) * 100 : 0;
+    dom.quiz.progressBar.style.width = `${Math.min(100, progressPercent)}%`;
+}
+
+export function updateQuestionGridNav() {
+    dom.quiz.questionGridNav.innerHTML = '';
+    if (!state.questionsToAsk || state.questionsToAsk.length === 0) return;
+
+    state.questionsToAsk.forEach((q, i) => {
+        const item = document.createElement('div');
+        item.classList.add('grid-nav-item');
+        item.title = `Question ${i + 1}`;
+        item.dataset.index = i;
+
+        if (state.isQuizActive && i === state.currentQuestionIndex) item.classList.add('current');
+
+        const answerInfo = state.userAnswers[i];
+        if (answerInfo !== null) {
+            item.classList.add('answered');
+            if (state.currentQuizConfig.instantFeedback || !state.isQuizActive) {
+                item.classList.toggle('correct', !!answerInfo.isCorrect);
+                item.classList.toggle('incorrect', !answerInfo.isCorrect);
+            }
+        }
+
+        if (state.currentQuizConfig.allowNavBack && answerInfo !== null && i !== state.currentQuestionIndex) {
+            item.classList.add('clickable');
+            item.addEventListener('click', () => {
+                if (state.isQuizActive) displayQuestion(i);
+            });
+        }
+        dom.quiz.questionGridNav.appendChild(item);
+    });
+}
+
+export function updateQuizHeader() {
+    dom.quiz.questionCounterDisplay.textContent = `Question ${state.currentQuestionIndex + 1} / ${state.questionsToAsk.length}`;
+    dom.quiz.streakCounterDisplay.textContent = `Série: ${state.currentStreak} 🔥`;
+    dom.quiz.scoreDisplay.textContent = `Score: ${state.totalPoints} pts`;
+    updateProgressBar();
+    updateQuestionGridNav();
+}
+
+export function displayQuestion(index) {
+    console.log(state.isQuizActive, index, state.questionsToAsk); // DEBUG
+    if (!state.isQuizActive || index < 0 || index >= state.questionsToAsk.length) {
+        console.warn("Invalid index or quiz not active for displayQuestion:", index);
+        return;
+    }
+    // Clear previous feedback
+    document.querySelectorAll('.immediate-feedback.visible').forEach(fb => fb.classList.remove('visible'));
+
+    state.currentQuestionIndex = index;
+    const question = state.questionsToAsk[index];
+    dom.quiz.contentArea.innerHTML = ''; // Clear previous
+
+    const questionBlock = createQuestionBlock(question, index); // From questionRenderer.js
+    dom.quiz.contentArea.appendChild(questionBlock);
+
+    // Handle re-enabling/restoring answers if navigating back
+    if (state.currentQuizConfig.allowNavBack && state.userAnswers[index] !== null) {
+        enableQuestionBlockInputs(questionBlock);
+        restoreAnswerSelectionUI(questionBlock, state.userAnswers[index].answer, question.type);
+    } else if (state.userAnswers[index] !== null && !state.currentQuizConfig.allowNavBack) {
+        disableQuestionBlockInputs(questionBlock); // Keep disabled if no nav back & answered
+    }
+
+    // Scroll into view logic
+    setTimeout(() => {
+        document.querySelectorAll('.question-block.focused').forEach(b => b.classList.remove('focused'));
+        questionBlock.classList.add('focused');
+        const headerHeight = dom.quiz.header.offsetHeight || 120; // Use header element from dom
+        const elementPosition = questionBlock.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 20; // Adjust offset as needed
+        window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+    }, 50);
+
+
+    updateQuizHeader();
+    state.questionStartTime = Date.now();
+    state.isSubmittingAnswer = false;
+}
+
+
+// --- Answering Logic ---
+
+export function handleAnswerSelection(event) {
+    if (state.isSubmittingAnswer || !state.isQuizActive) return;
+    const targetElement = event.target;
+    const questionBlock = targetElement.closest('.question-block');
+    if (!questionBlock) return;
+
+    const questionIndex = parseInt(questionBlock.dataset.index, 10);
+    const question = state.questionsToAsk[questionIndex];
+    let userAnswer;
+    let isValidInput = true;
+
+    // Extract User Answer Based on Type
+    switch (question.type) {
+        case 'qcm':
+        case 'vrai_faux':
+            const selectedButton = targetElement.closest('button.answer-btn');
+            if (!selectedButton) return;
+            const answerString = selectedButton.dataset.answer;
+            userAnswer = (answerString === 'true') ? true : (answerString === 'false' ? false : answerString);
+            questionBlock.querySelectorAll('.answer-options button').forEach(btn => btn.classList.remove('selected'));
+            selectedButton.classList.add('selected');
+            break;
+        case 'texte_libre':
+            const inputElement = questionBlock.querySelector('.answer-options input[type="text"]');
+            userAnswer = inputElement.value.trim();
+            if (userAnswer === '') { showToast("Veuillez entrer une réponse.", "warning"); isValidInput = false; }
+            break;
+        case 'qcm_multi':
+            const checkedBoxes = questionBlock.querySelectorAll('.answer-options input[type="checkbox"]:checked');
+            userAnswer = Array.from(checkedBoxes).map(cb => cb.value).sort(); // Sort for consistent comparison
+            if (userAnswer.length === 0) { showToast("Veuillez sélectionner au moins une réponse.", "warning"); isValidInput = false; }
+            break;
+        case 'association':
+            if (!targetElement.classList.contains('submit-answer-btn')) return; // Only trigger on submit
+            userAnswer = {};
+            const matchedTargets = questionBlock.querySelectorAll('.drop-target.matched');
+            matchedTargets.forEach(target => {
+                if (target.dataset.targetId && target.dataset.pairedItemId) {
+                    // Map: Target ID (Right Column Item) -> Paired Item ID (Left Column Item)
+                    userAnswer[target.dataset.targetId] = target.dataset.pairedItemId;
+                }
+            });
+            const totalTargets = questionBlock.querySelectorAll('.drop-target').length;
+            if (matchedTargets.length !== totalTargets) { // Check if all targets are matched
+                showToast("Veuillez associer tous les éléments.", "warning");
+                isValidInput = false;
+            }
+            break;
+        case 'ordre':
+            if (!targetElement.classList.contains('submit-answer-btn')) return;
+            const itemsContainer = questionBlock.querySelector('.ordering-items-container');
+            if (!itemsContainer) { isValidInput = false; break; }
+            userAnswer = Array.from(itemsContainer.querySelectorAll('.ordering-item')).map(item => item.textContent.trim()); // Get text content
+            break;
+        default:
+            console.error("Unknown question type in handleAnswerSelection:", question.type);
+            return;
+    }
+
+    if (!isValidInput) return; // Stop if input was invalid (e.g., empty text, nothing selected)
+
+    state.isSubmittingAnswer = true; // Lock processing
+    disableQuestionBlockInputs(questionBlock);
+    processAnswer(questionIndex, userAnswer);
+
+    // Feedback & Advance Logic
+    if (state.currentQuizConfig.instantFeedback) {
+        showImmediateFeedback(questionBlock, state.userAnswers[questionIndex].isCorrect);
+        playSound(state.userAnswers[questionIndex].isCorrect ? 'correct' : 'incorrect');
+        setTimeout(advanceQuestion, FEEDBACK_DELAY);
+    } else {
+        playSound('click');
+        setTimeout(advanceQuestion, ADVANCE_DELAY);
+    }
+}
+
+export function disableQuestionBlockInputs(questionBlock) {
+    questionBlock.querySelectorAll('button, input, select, textarea').forEach(el => el.disabled = true);
+    questionBlock.querySelectorAll('.matching-item, .ordering-item, .drop-target').forEach(el => {
+        el.setAttribute('draggable', 'false');
+        el.style.cursor = 'default';
+        el.classList.remove('over');
+        // Remove click handler for returning association items when disabled
+        if (el.classList.contains('drop-target') && el.classList.contains('matched')) {
+            el.removeEventListener('click', handleReturnItemToLeft);
+            el.title = ""; // Clear tooltip
+        }
+    });
+}
+
+export function enableQuestionBlockInputs(questionBlock) {
+    // Enable most inputs/buttons, but NOT feedback buttons if they exist
+    questionBlock.querySelectorAll('button:not(.flashcard-correct):not(.flashcard-incorrect), input, select, textarea').forEach(el => el.disabled = false);
+    // Enable draggable items that are NOT matched
+    questionBlock.querySelectorAll('.matching-item:not(.matched)').forEach(el => { el.setAttribute('draggable', 'true'); el.style.cursor = 'grab'; });
+    questionBlock.querySelectorAll('.ordering-item').forEach(el => { el.setAttribute('draggable', 'true'); el.style.cursor = 'grab'; });
+    // Re-enable click handler for returning association items
+    questionBlock.querySelectorAll('.drop-target.matched').forEach(el => {
+        el.addEventListener('click', handleReturnItemToLeft);
+        el.style.cursor = 'pointer';
+        el.title = "Cliquez pour renvoyer l'élément à gauche";
+    });
+    // Ensure non-matched targets are not clickable
+    questionBlock.querySelectorAll('.drop-target:not(.matched)').forEach(el => {
+        el.removeEventListener('click', handleReturnItemToLeft);
+        el.style.cursor = 'default';
+        el.title = '';
+    });
+}
+
+/** Restores visual selection state when navigating back */
+export function restoreAnswerSelectionUI(questionBlock, answer, type) {
+    if (answer === null || answer === undefined) return;
+
+    switch (type) {
+        case 'qcm':
+        case 'vrai_faux':
+            questionBlock.querySelectorAll('.answer-options button').forEach(btn => btn.classList.remove('selected'));
+            const btnToSelect = questionBlock.querySelector(`.answer-options button[data-answer="${answer}"]`);
+            if (btnToSelect) btnToSelect.classList.add('selected');
+            break;
+        case 'texte_libre':
+            const inputEl = questionBlock.querySelector('.answer-options input[type="text"]');
+            if (inputEl) inputEl.value = answer;
+            break;
+        case 'qcm_multi':
+            const answerArray = Array.isArray(answer) ? answer : [];
+            questionBlock.querySelectorAll('.answer-options input[type="checkbox"]').forEach(cb => {
+                cb.checked = answerArray.includes(cb.value);
+            });
+            break;
+        case 'ordre':
+            const currentItems = Array.from(questionBlock.querySelectorAll('.ordering-items-container .ordering-item'));
+            const container = questionBlock.querySelector('.ordering-items-container');
+            if (!container || !Array.isArray(answer)) break;
+            container.innerHTML = ''; // Clear container
+            // Re-append items in the saved order
+            answer.forEach(itemText => {
+                // Find the original DOM element based on text content (fragile if duplicates exist)
+                const item = currentItems.find(el => el.textContent.trim() === itemText);
+                if (item) container.appendChild(item);
+                else console.warn("Could not find ordering item element for:", itemText); // Handle missing item case
+            });
+            break;
+        case 'association':
+            const leftContainer = questionBlock.querySelector('.matching-column[id^="matching-left-"]');
+            const allLeftItems = Array.from(leftContainer?.querySelectorAll('.matching-item') || []);
+            const allTargets = Array.from(questionBlock.querySelectorAll('.drop-target'));
+
+            // Reset all targets and left items first
+            allTargets.forEach(target => {
+                target.textContent = 'Déposez ici';
+                target.classList.remove('matched');
+                target.removeAttribute('data-paired-item-id');
+                target.removeEventListener('click', handleReturnItemToLeft);
+                target.style.cursor = 'default';
+                target.title = "";
+            });
+            allLeftItems.forEach(item => {
+                item.classList.remove('matched');
+                item.setAttribute('draggable', 'true');
+                leftContainer.appendChild(item); // Ensure all start in left column
+            });
+
+            // Reconstruct matched pairs based on saved answer { targetId: itemId }
+            if (typeof answer === 'object' && answer !== null) {
+                for (const targetId in answer) {
+                    const itemId = answer[targetId];
+                    const targetElement = allTargets.find(t => t.dataset.targetId === targetId);
+                    const itemElement = allLeftItems.find(i => i.dataset.itemId === itemId);
+
+                    if (targetElement && itemElement) {
+                        // Update target
+                        targetElement.innerHTML = itemElement.innerHTML; // Copy content
+                        targetElement.classList.add('matched');
+                        targetElement.dataset.pairedItemId = itemId;
+                        targetElement.addEventListener('click', handleReturnItemToLeft);
+                        targetElement.style.cursor = 'pointer';
+                        targetElement.title = "Cliquez pour renvoyer l'élément à gauche";
+
+                        // Hide item from left
+                        itemElement.classList.add('matched');
+                        itemElement.setAttribute('draggable', 'false');
+                    }
+                }
+            }
+            break;
+    }
+}
+
+export function showImmediateFeedback(questionBlock, isCorrect) {
+    const feedbackDiv = questionBlock.querySelector('.immediate-feedback');
+    if (!feedbackDiv) return;
+
+    const textSpan = feedbackDiv.querySelector('.feedback-text');
+    feedbackDiv.classList.remove('hidden', 'correct', 'incorrect', 'visible');
+    textSpan.innerHTML = ''; // Clear previous
+
+    let feedbackTextHTML = isCorrect ? "Correct !" : "Incorrect.";
+    if (!isCorrect && state.currentQuizConfig.showExpl) {
+        const question = state.questionsToAsk[state.currentQuestionIndex];
+        const correctAnswerFormatted = formatAnswerForDisplay(question.correctAnswer, question.type); // Use results formatter
+        feedbackTextHTML += `<span class="feedback-correct-answer">Bonne réponse : ${correctAnswerFormatted}</span>`;
+        if (question.explanation) {
+            feedbackTextHTML += `<p class="explanation" style="margin-top: 8px; font-size: 0.9em;">${renderMarkdown(question.explanation)}</p>`;
+        }
+    }
+
+    feedbackDiv.classList.add(isCorrect ? 'correct' : 'incorrect');
+    textSpan.innerHTML = feedbackTextHTML; // Use innerHTML
+
+    setTimeout(() => feedbackDiv.classList.add('visible'), 10);
+}
+
+/** Processes the user's answer, calculates score/points, updates streak. */
+export function processAnswer(questionIndex, userAnswer) {
+    // Ensure answer entry exists (should be initialized in createQuestionBlock)
+    if (state.userAnswers[questionIndex] === null) {
+        console.warn(`processAnswer called for index ${questionIndex} but userAnswers entry is null. Initializing.`);
+        const q = state.questionsToAsk[questionIndex];
+        const qId = q.id || `q_${state.selectedQuizId}_${q.originalIndex ?? questionIndex}`;
+        state.userAnswers[questionIndex] = { questionId: qId, marked: false, displayedOptions: null };
+    }
+
+    const question = state.questionsToAsk[questionIndex];
+    // --- Standardized ID Generation ---
+    const questionId = question.id || `q_${state.selectedQuizId}_${question.originalIndex ?? questionIndex}`;
+
+    // --- Ensure userAnswers entry exists with the correct ID ---
+    // Create or update the entry, preserving existing marked/options status if possible
+    if (state.userAnswers[questionIndex] === null || state.userAnswers[questionIndex].questionId !== questionId) {
+        console.warn(`processAnswer: Initializing/Correcting userAnswers entry for index ${questionIndex} with ID ${questionId}`);
+        state.userAnswers[questionIndex] = {
+            ...(state.userAnswers[questionIndex] || {}), // Keep existing data like marked/options if entry existed but ID was wrong
+            questionId: questionId,
+            // Ensure core fields exist if creating anew
+            marked: state.userAnswers[questionIndex]?.marked ?? false,
+            displayedOptions: state.userAnswers[questionIndex]?.displayedOptions ?? null,
+            answer: state.userAnswers[questionIndex]?.answer ?? null,
+            isCorrect: state.userAnswers[questionIndex]?.isCorrect ?? null,
+            pointsEarned: state.userAnswers[questionIndex]?.pointsEarned ?? 0,
+            timeTaken: state.userAnswers[questionIndex]?.timeTaken ?? null,
+        };
+    }
+
+    const correctAnswer = question.correctAnswer;
+    const pointsPossible = question.points ?? 10; // Default points
+    let isCorrect = false;
+    const timeTaken = (Date.now() - state.questionStartTime) / 1000;
+
+    // --- Check Correctness ---
+    try {
+        switch (question.type) {
+            case 'vrai_faux': isCorrect = (userAnswer === correctAnswer); break;
+            case 'qcm': isCorrect = String(userAnswer).toLowerCase() === String(correctAnswer).toLowerCase(); break;
+            case 'texte_libre': isCorrect = String(userAnswer).trim().toLowerCase() === String(correctAnswer).trim().toLowerCase(); break;
+            case 'qcm_multi':
+                const correctSorted = [...(Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer])].sort();
+                // userAnswer is already sorted from handleAnswerSelection
+                isCorrect = JSON.stringify(userAnswer) === JSON.stringify(correctSorted);
+                break;
+            case 'ordre':
+                const correctOrder = Array.isArray(correctAnswer) ? correctAnswer : [];
+                const userOrder = Array.isArray(userAnswer) ? userAnswer : [];
+                // Simple string comparison after getting text content in handleAnswerSelection
+                isCorrect = userOrder.join('|') === correctOrder.join('|'); // Compare ordered strings
+                break;
+            case 'association':
+                // userAnswer is { targetId: itemId }
+                const correctMap = typeof correctAnswer === 'object' && correctAnswer !== null ? correctAnswer : {};
+                const userMap = typeof userAnswer === 'object' && userAnswer !== null ? userAnswer : {};
+                let allMatch = true;
+                // Check if user map has same size as correct map AND all pairs match
+                if (Object.keys(userMap).length !== Object.keys(correctMap).length) {
+                    allMatch = false;
+                } else {
+                    for (const leftItemKey in correctMap) { // Iterate through correct keys (left items)
+                        const correctTarget = correctMap[leftItemKey]; // Expected right item
+                        let userMappedLeftItem = null;
+                        // Find which left item the user mapped TO this correct target
+                        for (const targetKey in userMap) {
+                            if (targetKey === correctTarget) {
+                                userMappedLeftItem = userMap[targetKey];
+                                break;
+                            }
+                        }
+                        // Check if the left item the user put in the correct target's spot matches the key
+                        if (userMappedLeftItem !== leftItemKey) {
+                            allMatch = false;
+                            break;
+                        }
+                    }
+                }
+                // Ensure all required items (items_left) were attempted to be mapped
+                // This check might be redundant if the first check passes, but safer
+                if (question.items_left && Object.keys(userMap).length !== question.items_left.length) {
+                    allMatch = false;
+                }
+                isCorrect = allMatch;
+                break;
+            default: isCorrect = false;
+        }
+    } catch (e) { console.error("Error checking answer:", e); isCorrect = false; }
+
+    const pointsEarned = isCorrect ? pointsPossible : 0;
+
+    // Update the specific answer entry (now we know it exists with the right ID)
+    state.userAnswers[questionIndex] = {
+        ...state.userAnswers[questionIndex], // Keep questionId, marked, displayedOptions
+        answer: userAnswer,
+        isCorrect: isCorrect,
+        pointsEarned: pointsEarned,
+        timeTaken: parseFloat(timeTaken.toFixed(2)),
+    };
+
+    // Recalculate running stats for the session
+    recalculateCurrentSessionStats();
+    updateQuizHeader(); // Update UI immediately
+}
+
+/** Recalculates score, points, streak based on current state.userAnswers */
+export function recalculateCurrentSessionStats() {
+    let currentSessionScore = 0;
+    let currentSessionPoints = 0;
+    let currentSessionStreak = 0;
+    let maxSessionStreak = 0;
+
+    for (let i = 0; i < state.userAnswers.length; i++) {
+        const answer = state.userAnswers[i];
+        if (answer !== null) { // Only count answered questions
+            if (answer.isCorrect) {
+                currentSessionScore++;
+                currentSessionPoints += answer.pointsEarned || 0; // Ensure points are added
+                currentSessionStreak++;
+            } else {
+                maxSessionStreak = Math.max(maxSessionStreak, currentSessionStreak);
+                currentSessionStreak = 0; // Reset streak on incorrect
+            }
+        } else {
+            // Reset streak if a question is skipped (e.g., due to navigation)
+            maxSessionStreak = Math.max(maxSessionStreak, currentSessionStreak);
+            currentSessionStreak = 0;
+        }
+    }
+    // Final check for streak at the end of the answers array
+    maxSessionStreak = Math.max(maxSessionStreak, currentSessionStreak);
+
+    // Update global state variables for the current session
+    state.score = currentSessionScore;
+    state.totalPoints = currentSessionPoints;
+    // IMPORTANT: currentStreak should reflect the streak ending at the *last answered* question,
+    // but the loop calculates it based on the full array. Let's keep the loop's current streak.
+    state.currentStreak = currentSessionStreak;
+    state.maxStreak = maxSessionStreak; // Max streak achieved *so far*
+}
+
+
+export function advanceQuestion() {
+    state.isSubmittingAnswer = false; // Unlock
+
+    // Hide feedback from previous question
+    const currentBlock = dom.quiz.contentArea.querySelector(`.question-block[data-index="${state.currentQuestionIndex}"]`);
+    if (currentBlock) {
+        const feedbackDiv = currentBlock.querySelector('.immediate-feedback');
+        if (feedbackDiv) feedbackDiv.classList.remove('visible');
+    }
+
+    const nextIndex = state.currentQuestionIndex + 1;
+    if (nextIndex < state.questionsToAsk.length) {
+        displayQuestion(nextIndex);
+    } else {
+        // Quiz finished naturally
+        state.isQuizActive = false;
+        if (state.timerInterval) clearInterval(state.timerInterval);
+        if (!state.quizEndTime) state.quizEndTime = Date.now();
+        dom.quiz.finishQuizBtn.classList.remove('hidden');
+        dom.quiz.cancelQuizBtn.classList.add('hidden');
+        updateQuestionGridNav(); // Show final state
+        showToast("Session terminée ! Cliquez sur 'Voir les Résultats'.", "success");
+        playSound('finish');
+        dom.quiz.finishQuizBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Results are shown when user clicks the finish button
+    }
+}
+
+export function handleMarkQuestion(event) {
+    const button = event.target.closest('.mark-question-btn'); // Ensure button itself
+    if (!button) return;
+    const index = parseInt(button.dataset.questionIndex, 10);
+    if (isNaN(index) || index < 0 || index >= state.questionsToAsk.length) return;
+
+    // Ensure answer entry exists
+    if (state.userAnswers[index] === null) {
+        const q = state.questionsToAsk[index];
+        const qId = q.id || `q_${state.selectedQuizId}_${q.originalIndex ?? index}`;
+        state.userAnswers[index] = { questionId: qId, marked: false, displayedOptions: null, answer: null, isCorrect: null, pointsEarned: 0, timeTaken: null }; // Initialize minimally
+    }
+    state.userAnswers[index].marked = !state.userAnswers[index].marked;
+
+    // Update button UI
+    button.textContent = state.userAnswers[index].marked ? '🌟' : '⭐';
+    button.title = state.userAnswers[index].marked ? "Ne plus marquer" : "Marquer cette question";
+    button.classList.toggle('marked', state.userAnswers[index].marked);
+    showToast(`Question ${index + 1} ${state.userAnswers[index].marked ? 'marquée' : 'démárquée'}.`, 'info', 1500);
+    playSound('click');
+    // No backend call needed for local version
+}
+
+export function forceFinishQuiz(timedOut = false) {
+    if (!state.isQuizActive && !timedOut) return; // Avoid finishing multiple times unless timed out
+    if (!state.questionsToAsk || state.questionsToAsk.length === 0) return; // No questions
+
+    console.log(`Forcing quiz finish. Timed out: ${timedOut}`);
+    setQuizActive(false); // Use state modifier
+    // updateSettingsButtonVisibility(); // This should be called from main.js after state change
+    if (state.timerInterval) clearInterval(state.timerInterval);
+    state.timerInterval = null;
+    if (!state.quizEndTime) state.quizEndTime = Date.now();
+
+    // Mark remaining as unanswered and disable current block
+    state.questionsToAsk.forEach((q, index) => {
+        if (state.userAnswers[index] === null) {
+            // --- Use Standardized ID Generation ---
+            const questionId = q.id || `q_${state.selectedQuizId}_${q.originalIndex ?? index}`;
+            state.userAnswers[index] = {
+                questionId: questionId, answer: null, isCorrect: false, pointsEarned: 0,
+                timeTaken: null, marked: false, displayedOptions: null // Ensure all fields exist
+            };
+        }
+        const block = dom.quiz.contentArea.querySelector(`.question-block[data-index="${index}"]`);
+        if (block && index === state.currentQuestionIndex) {
+            disableQuestionBlockInputs(block);
+        }
+    });
+
+    recalculateCurrentSessionStats(); // Recalculate final stats
+    updateQuestionGridNav(); // Show final grid state
+    dom.quiz.cancelQuizBtn.classList.add('hidden');
+    dom.quiz.finishQuizBtn.classList.add('hidden'); // Hide finish button too
+
+    showResults(); // Go directly to results screen
+}
+
+export function handleCancelQuiz() {
+    if (!state.isQuizActive) return;
+    if (confirm("Êtes-vous sûr de vouloir abandonner cette session ? Votre progression ne sera pas sauvegardée.")) {
+        setQuizActive(false); // Use state modifier
+        if (state.timerInterval) clearInterval(state.timerInterval);
+
+        // Reset only quiz-related state, keep library/history/prefs
+        resetQuizState();
+        // Crucially, deselect the quiz so config options hide on dashboard
+        resetSelectionState();
+
+        showToast("Session abandonnée.", "info");
+        showScreen('dashboard'); // Go back to dashboard
+        // Trigger UI updates needed for dashboard after cancellation
+        // These might need to be called from main.js after showScreen
+        // Example: renderQuizLibrary(); displayScoreHistory(); populateHistoryFilter();
+    }
+}
+
+
+// --- Configuration Logic (Moved from main event handler area) ---
+export function handleConfigChange() {
+    const selectedMode = document.querySelector('input[name="quiz-mode"]:checked')?.value;
+    if (!selectedMode) return; // Should not happen
+
+    dom.dashboard.customSettingsDiv.classList.toggle('hidden', selectedMode !== 'custom');
+    dom.dashboard.errorSessionsCountInput.disabled = (selectedMode !== 'errors');
+
+    // Logic for enabling/disabling dependent options
+    if (dom.dashboard.allowNavigationCheckbox.checked) {
+        dom.dashboard.instantFeedbackCheckbox.checked = false;
+        dom.dashboard.instantFeedbackCheckbox.disabled = true;
+        dom.dashboard.showExplOnIncorrectCheckbox.checked = false;
+        dom.dashboard.showExplOnIncorrectCheckbox.disabled = true;
+        dom.dashboard.instantFeedbackCheckbox.closest('label').style.opacity = '0.5';
+        dom.dashboard.showExplOnIncorrectCheckbox.closest('label').style.opacity = '0.5';
+    } else {
+        dom.dashboard.instantFeedbackCheckbox.disabled = false;
+        dom.dashboard.instantFeedbackCheckbox.closest('label').style.opacity = '1';
+        // Explanation option depends ONLY on instant feedback when navigation is OFF
+        const isInstantFeedbackChecked = dom.dashboard.instantFeedbackCheckbox.checked;
+        dom.dashboard.showExplOnIncorrectCheckbox.disabled = !isInstantFeedbackChecked;
+        dom.dashboard.showExplOnIncorrectCheckbox.closest('label').style.opacity = isInstantFeedbackChecked ? '1' : '0.5';
+        if (!isInstantFeedbackChecked) {
+            dom.dashboard.showExplOnIncorrectCheckbox.checked = false;
+        }
+    }
+}
+
+export function resetConfigOptions(prefill = false) {
+    loadLastConfig(); // Ensure state.lastConfig is up-to-date
+
+    const defaultMode = (prefill && state.lastConfig.mode) ? state.lastConfig.mode : 'preset-short';
+    const radioToSelect = document.querySelector(`input[name="quiz-mode"][value="${defaultMode}"]`)
+        || document.querySelector('input[name="quiz-mode"][value="preset-short"]'); // Fallback
+    if (radioToSelect) radioToSelect.checked = true;
+
+    dom.dashboard.allowNavigationCheckbox.checked = (prefill && state.lastConfig.allowNavBack !== undefined) ? state.lastConfig.allowNavBack : false;
+    dom.dashboard.instantFeedbackCheckbox.checked = (prefill && state.lastConfig.instantFeedback !== undefined) ? state.lastConfig.instantFeedback : true;
+    // showExpl depends on instantFeedback, handleConfigChange will set it correctly
+    // dom.dashboard.showExplOnIncorrectCheckbox.checked = (prefill && state.lastConfig.showExpl !== undefined) ? state.lastConfig.showExpl : false; // Initial state before logic
+
+    dom.dashboard.customTimeInput.value = (prefill && state.lastConfig.customTime) ? state.lastConfig.customTime : '';
+    dom.dashboard.customQuestionsInput.value = (prefill && state.lastConfig.customQuestions) ? state.lastConfig.customQuestions : '';
+    dom.dashboard.errorSessionsCountInput.value = (prefill && state.lastConfig.errorSessions) ? state.lastConfig.errorSessions : '3';
+
+    handleConfigChange(); // Update UI based on defaults/prefill and dependencies
+}
+
+
+export function updateErrorModeAvailability() {
+    const errorModeRadio = document.querySelector('input[name="quiz-mode"][value="errors"]');
+    const errorModeLabel = errorModeRadio?.closest('label');
+    if (!errorModeRadio || !errorModeLabel) return;
+
+    let isDisabled = true;
+    let title = "Sélectionnez d'abord un quiz";
+
+    if (state.selectedQuizId) {
+        // Ensure history is loaded before checking
+        loadLocalHistory();
+        const hasErrorsInHistory = state.localHistory.some(attempt =>
+            attempt.quizId === state.selectedQuizId &&
+            attempt.answers &&
+            attempt.answers.some(a => a && a.isCorrect === false)
+        );
+        isDisabled = !hasErrorsInHistory;
+        title = hasErrorsInHistory ? "" : "Aucune erreur enregistrée pour ce quiz dans l'historique";
+    }
+
+    errorModeRadio.disabled = isDisabled;
+    errorModeLabel.style.opacity = isDisabled ? '0.5' : '1';
+    errorModeLabel.title = title;
+
+    // If errors mode was selected but becomes disabled, switch to default
+    if (errorModeRadio.checked && isDisabled) {
+        console.log("Error mode was checked but became unavailable. Resetting config.");
+        resetConfigOptions(false); // Reset to default, don't prefill last config
+    }
+}
+
+
+//--- Helper to generate false answers --- Moved from questionRenderer to be callable by engine ---
+/**
+* Generates false answers (distractors) for QCM/QCM-Multi questions.
+*/
+export function generateFalseAnswers(currentQuestion, allQuestions, dummyAnswersData, excludedAnswers = []) {
+    const correctAnswer = currentQuestion.correctAnswer;
+    const correctAnswersArray = Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer];
+
+    // Build the set of excluded answers (case-insensitive string comparison)
+    const finalExcluded = new Set(
+        [...correctAnswersArray, ...excludedAnswers]
+            .map(a => String(a).toLowerCase())
+    );
+
+    let potentialFalsePool = new Set();
+
+    const addAnswerToPool = (answer) => {
+        const answerType = typeof answer;
+        let answerStr = '';
+        let isValid = false;
+
+        if (answerType === 'string' && answer.trim() !== '') {
+            answerStr = answer;
+            isValid = true;
+        } else if (answerType === 'boolean') {
+            answerStr = answer ? 'Vrai' : 'Faux'; // Use consistent string representation
+            isValid = true;
+        }
+        // Ignore other types
+
+        if (isValid) {
+            const answerStrLower = answerStr.toLowerCase();
+            if (!finalExcluded.has(answerStrLower)) {
+                potentialFalsePool.add(answerStr); // Add the standardized string form
+            }
+        }
+    };
+
+    // --- Populate pool (order matters) ---
+    // 1. Dummies from same category
+    if (dummyAnswersData && currentQuestion.category && dummyAnswersData[currentQuestion.category]) {
+        dummyAnswersData[currentQuestion.category].forEach(addAnswerToPool);
+    }
+    // 2. Global Dummies
+    if (dummyAnswersData && dummyAnswersData.Global) {
+        dummyAnswersData.Global.forEach(addAnswerToPool);
+    }
+    // 3. Correct answers from *other* questions (prefer same category)
+    const otherQuestions = allQuestions.filter(q => q !== currentQuestion);
+    // Same category first
+    otherQuestions.forEach(q => {
+        if (q.category === currentQuestion.category) {
+            if (typeof q.correctAnswer === 'string' || typeof q.correctAnswer === 'boolean') addAnswerToPool(q.correctAnswer);
+            else if (Array.isArray(q.correctAnswer)) q.correctAnswer.forEach(item => { if (typeof item === 'string' || typeof item === 'boolean') addAnswerToPool(item); });
+        }
+    });
+    // Then other categories
+    otherQuestions.forEach(q => {
+        if (q.category !== currentQuestion.category) {
+            if (typeof q.correctAnswer === 'string' || typeof q.correctAnswer === 'boolean') addAnswerToPool(q.correctAnswer);
+            else if (Array.isArray(q.correctAnswer)) q.correctAnswer.forEach(item => { if (typeof item === 'string' || typeof item === 'boolean') addAnswerToPool(item); });
+        }
+    });
+    // 4. Dummies from other categories
+    if (dummyAnswersData) {
+        for (const cat in dummyAnswersData) {
+            if (cat !== currentQuestion.category && cat !== "Global") {
+                dummyAnswersData[cat].forEach(addAnswerToPool);
+            }
+        }
+    }
+
+    // --- Select final options ---
+    let shuffledPool = shuffleArray(Array.from(potentialFalsePool));
+    let falseOptions = shuffledPool.slice(0, 3); // Aim for 3 distractors
+
+    // Fallback if needed
+    let fallbackCounter = 1;
+    while (falseOptions.length < 3) {
+        const placeholder = `Option ${fallbackCounter + correctAnswersArray.length}`; // Try to make unique
+        if (!finalExcluded.has(placeholder.toLowerCase()) && !falseOptions.includes(placeholder)) {
+            falseOptions.push(placeholder);
+        }
+        fallbackCounter++;
+        if (fallbackCounter > 10) break; // Safety break
+    }
+
+    return falseOptions.slice(0, 3);
+}
+
+
+// Helper function from results.js needed here for immediate feedback
+function formatAnswerForDisplay(answerValue, questionType) {
+    if (answerValue === null || answerValue === undefined) return '<i>N/A</i>';
+    let displayString = '';
+    try {
+        if (questionType === 'vrai_faux') displayString = answerValue ? 'Vrai' : 'Faux';
+        else if (Array.isArray(answerValue)) displayString = answerValue.map(val => renderMarkdown(String(val))).join(questionType === 'ordre' ? ' → ' : ', ');
+        else if (questionType === 'association' && typeof answerValue === 'object') {
+            // In immediate feedback, user answer is {targetId: itemId}, correct is {itemId: targetId}
+            // Need to format based on context or stick to one format. Let's use target->item for user answer display.
+            displayString = Object.entries(answerValue).map(([key, value]) => `${renderMarkdown(key)} → ${renderMarkdown(value)}`).join('<br>');
+        }
+        else displayString = renderMarkdown(String(answerValue));
+    } catch (e) {
+        console.warn("Error formatting answer:", answerValue, e);
+        const tempDiv = document.createElement('div');
+        tempDiv.textContent = String(answerValue);
+        displayString = tempDiv.innerHTML; // Basic HTML escaping fallback
+    }
+    return displayString;
+}
