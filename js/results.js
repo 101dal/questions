@@ -1,5 +1,5 @@
 import * as dom from './dom.js';
-import { state, resetQuizState, setActiveQuizContent } from './state.js';
+import { state, resetQuizState, setActiveQuizContent, setQuizActive } from './state.js';
 import { showToast, playSound, showScreen, renderMarkdown } from './ui.js';
 import { saveQuizAttempt, saveLocalHistory, loadQuizContent } from './storage.js';
 // --- Importations modifiées ---
