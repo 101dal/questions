@@ -548,7 +548,14 @@ export function processAnswer(questionIndex, userAnswer) {
         switch (question.type) {
             case 'vrai_faux': isCorrect = (userAnswer === correctAnswer); break;
             case 'qcm': isCorrect = String(userAnswer).toLowerCase() === String(correctAnswer).toLowerCase(); break;
-            case 'texte_libre': isCorrect = String(userAnswer).trim().toLowerCase() === String(correctAnswer).trim().toLowerCase(); break;
+            case 'texte_libre':
+                const s1 = String(userAnswer);
+                const s2 = String(correctAnswer);
+                const error = levenshtein(s1, s2) / s2.length; // Calculate the error so that mis-type can occur correctly
+                console.log(error, error <= 0.15);
+                isCorrect = (error <= 0.15); // Lower than 15% means correct answer
+                break;
+                // isCorrect = String(userAnswer).trim().toLowerCase() === String(correctAnswer).trim().toLowerCase(); break;
             case 'qcm_multi':
                 const correctSorted = [...(Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer])].sort();
                 // userAnswer is already sorted from handleAnswerSelection
