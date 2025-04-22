@@ -250,6 +250,25 @@
 
     </div> <!-- Fin .container -->
 
+    <!-- MODALE / ÉCRAN DE TUTORIEL -->
+    <div id="tutorial-overlay" class="modal-overlay hidden">
+        <div id="tutorial-modal" class="modal-content">
+            <button id="close-tutorial-btn" class="modal-close-btn" title="Fermer">×</button>
+            <div id="tutorial-content-placeholder">
+                <!-- Le contenu de tutorial.html sera chargé ici -->
+                <p>Chargement du tutoriel...</p>
+            </div>
+            <div class="modal-footer">
+                <label class="checkbox-label small-label">
+                    <input type="checkbox" id="dont-show-tutorial-again">
+                    <span>Ne plus afficher au démarrage</span>
+                </label>
+                <button id="got-it-tutorial-btn" class="btn-primary">Compris !</button>
+            </div>
+        </div>
+    </div>
+    <!-- FIN MODALE TUTORIEL -->
+
     <!-- Load the main JS file as a module -->
     <script type="module" src="js/main.js"></script>
 </body>

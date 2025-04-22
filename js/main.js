@@ -10,6 +10,7 @@ import * as review from './review.js';
 import * as settings from './settings.js';
 import * as stats from './stats.js';
 import * as audioManager from './audioManager.js';
+import * as tutorialManager from './tutorial.js';
 
 // --- Initialization ---
 async function init() {
@@ -27,10 +28,12 @@ async function init() {
     // Important : L'appeler avant que les premiers sons ne soient potentiellement joués
     // mais après le chargement des préférences (pour savoir si le son est activé).
     await audioManager.initAudioManager();
-    // ---------------------------------
 
     // Apply initial settings
     ui.applyTheme(state.userPreferences.theme);
+
+    // --- Afficher le tutoriel si nécessaire ---
+    await tutorialManager.checkAndShowTutorial();
 
     // Import default quizzes if not present
     try {

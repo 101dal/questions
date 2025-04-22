@@ -645,3 +645,200 @@ ol {
     margin-top: 10px;
     margin-bottom: 10px;
 }
+
+/* css/components.css (ou css/modal.css) */
+
+/* --- Styles pour la Modale Tutoriel --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    /* Fond sombre semi-transparent */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1100;
+    /* Au-dessus du reste */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+
+.modal-overlay:not(.hidden) {
+    /* Appliquer quand pas caché */
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease, visibility 0s linear 0s;
+}
+
+.modal-content {
+    background-color: var(--card-bg-color);
+    padding: 25px 30px;
+    border-radius: var(--border-radius-medium);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 750px;
+    /* Largeur max de la modale */
+    max-height: 85vh;
+    /* Hauteur max */
+    overflow-y: auto;
+    /* Scroll si contenu trop long */
+    position: relative;
+    /* Pour le bouton fermer */
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.modal-overlay:not(.hidden) .modal-content {
+    transform: scale(1);
+}
+
+
+#tutorial-content h2 {
+    text-align: center;
+    color: var(--primary-color);
+    margin-top: 10px;
+    margin-bottom: 25px;
+    font-size: 1.8rem;
+    border: none;
+    padding: 0;
+}
+
+#tutorial-content p {
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.tutorial-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.tutorial-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 20px;
+}
+
+.tutorial-section h3 {
+    font-size: 1.3rem;
+    margin-bottom: 15px;
+    color: var(--text-color-headings);
+    border-bottom: none;
+    padding-bottom: 5px;
+    display: inline-block;
+    /* Pour que la bordure s'ajuste */
+    border-bottom: 2px solid var(--secondary-color);
+    /* Soulignement coloré */
+}
+
+.tutorial-section ul {
+    list-style: disc;
+    margin-left: 20px;
+    margin-bottom: 15px;
+}
+
+.tutorial-section ul ul {
+    list-style: circle;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+.tutorial-section li {
+    margin-bottom: 8px;
+}
+
+.tutorial-section code {
+    font-size: 0.9em;
+    padding: 2px 5px;
+}
+
+.tutorial-image {
+    max-width: 80%;
+    /* Limiter la taille des images */
+    height: auto;
+    display: block;
+    margin: 10px auto 20px auto;
+    /* Centrer */
+    border-radius: var(--border-radius-small);
+    border: 1px solid var(--border-color);
+}
+
+.tutorial-tip {
+    background-color: var(--info-bg);
+    border: 1px solid var(--info-color);
+    color: var(--info-color);
+    padding: 10px 15px;
+    border-radius: var(--border-radius-small);
+    font-weight: 600;
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 2.5rem;
+    font-weight: 300;
+    color: var(--text-color-light);
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    transition: color 0.2s ease;
+}
+
+.modal-close-btn:hover {
+    color: var(--text-color);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+    flex-wrap: wrap;
+    /* Pour petits écrans */
+    gap: 10px;
+}
+
+.modal-footer .checkbox-label {
+    margin: 0;
+    padding: 5px 0;
+    /* Moins de padding */
+    border: none;
+    /* Pas de bordure */
+    background: none;
+    flex-grow: 1;
+    /* Prend l'espace */
+}
+
+/* Style spécifique pour petit label dans modale */
+.modal-footer .checkbox-label.small-label span {
+    font-size: 0.9rem;
+    font-weight: normal;
+    margin-left: 8px;
+}
+
+.modal-footer .checkbox-label.small-label span::before {
+    width: 18px;
+    height: 18px;
+}
+
+.modal-footer .checkbox-label.small-label input[type="checkbox"]:checked+span::after {
+    /* Ajuster position checkmark si besoin */
+    left: 4px;
+    font-size: 12px;
+}
+
+#got-it-tutorial-btn {
+    /* Style bouton primaire */
+    flex-shrink: 0;
+    /* Ne rétrécit pas */
+}
