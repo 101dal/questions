@@ -1299,19 +1299,26 @@ body[data-theme="dark"] #quiz-library {
 .ordering-items-container {
     display: flex;
     flex-direction: column;
-    gap: 10px; /* Garder le même gap que .answer-options.ordre */
-    padding: 10px; /* Ajouter un petit padding intérieur si souhaité */
-    border: 1px dashed transparent; /* Bordure invisible pour délimiter, ou utiliser une couleur légère */
-    min-height: 80px; /* Donner une hauteur minimale */
-    border-radius: var(--border-radius-small); /* Optionnel: arrondir les coins */
+    gap: 10px;
+    /* Garder le même gap que .answer-options.ordre */
+    padding: 10px;
+    /* Ajouter un petit padding intérieur si souhaité */
+    border: 1px dashed transparent;
+    /* Bordure invisible pour délimiter, ou utiliser une couleur légère */
+    min-height: 80px;
+    /* Donner une hauteur minimale */
+    border-radius: var(--border-radius-small);
+    /* Optionnel: arrondir les coins */
 }
 
-.ordering-items-container:has(.ordering-placeholder) { /* Style quand un placeholder est dedans */
+.ordering-items-container:has(.ordering-placeholder) {
+    /* Style quand un placeholder est dedans */
     border-color: var(--current-primary-light);
     background-color: rgba(0, 0, 0, 0.02);
 }
+
 body[data-theme="dark"] .ordering-items-container:has(.ordering-placeholder) {
-     background-color: rgba(255, 255, 255, 0.03);
+    background-color: rgba(255, 255, 255, 0.03);
 }
 
 .ordering-item {
@@ -1367,8 +1374,10 @@ body[data-theme="dark"] .ordering-items-container:has(.ordering-placeholder) {
 } */
 
 .answer-options.ordre .submit-answer-btn {
-    margin-top: 15px; /* Garder la marge */
-    align-self: flex-start; /* Garder l'alignement */
+    margin-top: 15px;
+    /* Garder la marge */
+    align-self: flex-start;
+    /* Garder l'alignement */
 }
 
 /* Type: Association / Correspondance */
@@ -2213,4 +2222,169 @@ body[data-theme="dark"] .ordering-items-container:has(.ordering-placeholder) {
     }
 
     /* 12px */
+}
+
+/* --- Écran 5: Révision Globale --- */
+#review-screen .card {
+    /* Peut-être moins de padding pour maximiser l'espace */
+    padding: 15px 20px;
+}
+
+.review-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--current-border-color);
+}
+
+#review-quiz-title {
+    margin: 0;
+    padding: 0;
+    border: none;
+    font-size: 1.5rem;
+    flex-grow: 1;
+}
+
+.review-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-basis: 100%;
+    /* Prend toute la largeur sur petits écrans */
+    justify-content: space-between;
+    /* Espace entre recherche et bouton */
+}
+
+@media (min-width: 600px) {
+    .review-controls {
+        flex-basis: auto;
+        /* Revient à la taille auto sur écrans plus larges */
+    }
+}
+
+
+.review-controls label {
+    font-weight: 500;
+    flex-shrink: 0;
+    /* Empêche le label de rétrécir */
+}
+
+#review-search-input {
+    width: auto;
+    flex-grow: 1;
+    /* Prend l'espace disponible */
+    min-width: 150px;
+    /* Largeur minimale */
+    max-width: 400px;
+    /* Limite la largeur */
+    padding: 8px 12px;
+    /* Plus petit padding */
+}
+
+#review-back-to-dashboard-btn {
+    padding: 8px 15px;
+    /* Bouton plus petit */
+    margin: 0;
+    /* Pas de marge ajoutée par défaut */
+    flex-shrink: 0;
+}
+
+
+#review-content-area {
+    /* Style pour la zone de contenu si nécessaire */
+}
+
+/* Utilisation du style existant .result-item pour les cartes de révision */
+.review-card-item {
+    background-color: var(--current-bg-color);
+    border-radius: var(--border-radius-small);
+    padding: 15px 20px;
+    /* Ajuster padding */
+    margin-bottom: 20px;
+    box-shadow: 3px 3px 6px var(--current-dark-shadow), -3px -3px 6px var(--current-white-shadow);
+    border-left: 5px solid var(--current-primary-color);
+    /* Couleur neutre */
+}
+
+/* Cacher les éléments non pertinents dans la carte de révision */
+.review-card-item .user-answer,
+.review-card-item .unanswered-text,
+.review-card-item .result-question-header .mark-question-btn-result
+
+/* Cacher le bouton étoile */
+    {
+    display: none;
+}
+
+/* Ajuster le style du titre de la question */
+.review-card-item .result-question-header {
+    margin-bottom: 10px;
+}
+
+.review-card-item .question-text-result {
+    font-weight: 600;
+    color: var(--current-text-color);
+    font-size: 1.1rem;
+    line-height: 1.4;
+}
+
+/* Style spécifique pour la bonne réponse en mode révision */
+.review-card-item .correct-answer-text {
+    color: var(--current-text-color);
+    /* Couleur normale, pas vert */
+    font-style: normal;
+    /* Pas d'italique par défaut */
+    font-weight: 500;
+    font-size: 1rem;
+    margin-top: 10px;
+    /* Espace avant la réponse */
+}
+
+.review-card-item .correct-answer-text strong {
+    /* Si la réponse est formatée */
+    color: var(--current-success-color);
+    /* Mettre en évidence la bonne réponse en vert */
+}
+
+.review-card-item .explanation {
+    margin-top: 15px;
+    font-size: 0.95rem;
+    color: var(--current-text-light);
+    border-top: 1px solid var(--current-border-color);
+    padding-top: 12px;
+    line-height: 1.5;
+}
+
+.review-card-item.hidden-by-search {
+    display: none;
+}
+
+/* Marqueur pour la recherche - optionnel */
+.review-card-item .search-highlight {
+    background-color: var(--current-warning-bg);
+    color: var(--current-warning-color);
+    font-weight: bold;
+    padding: 0 2px;
+    border-radius: 3px;
+}
+
+/* Style pour le conteneur du bouton Valider */
+.validation-container {
+    margin-top: 25px;
+    /* Espace au-dessus du bouton */
+    text-align: center;
+    /* Centrer le bouton */
+    border-top: 1px solid var(--current-border-color);
+    /* Ligne de séparation légère */
+    padding-top: 20px;
+}
+
+/* S'assurer que le bouton universel a une bonne taille */
+.universal-validate-btn {
+    padding: 12px 30px;
+    font-size: 1.1rem;
 }

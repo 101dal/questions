@@ -4,6 +4,7 @@ export const screens = {
     dashboard: document.getElementById('dashboard-screen'),
     quiz: document.getElementById('quiz-screen'),
     results: document.getElementById('results-screen'),
+    review: document.getElementById('review-screen'),
     settings: document.getElementById('settings-screen'),
 };
 
@@ -94,6 +95,15 @@ export const settings = {
     badgesEarnedLocalDiv: document.getElementById('badges-earned-local'),
     backToDashboardBtn: document.getElementById('back-to-dashboard-from-settings-btn'),
 };
+
+// --- Review Screen Elements ---
+export const review = {
+    screen: document.getElementById('review-screen'),
+    quizTitle: document.getElementById('review-quiz-title'),
+    searchInput: document.getElementById('review-search-input'),
+    backToDashboardBtn: document.getElementById('review-back-to-dashboard-btn'),
+    contentArea: document.getElementById('review-content-area'),
+}
 
 // --- Dynamic Elements (created later) ---
 export const dynamic = {

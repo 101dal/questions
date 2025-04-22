@@ -57,6 +57,7 @@
                         <span>dernières sessions</span>
                     </label>
                     <label><input type="radio" name="quiz-mode" value="exam"><span>⏱️ Mode Examen Blanc</span></label>
+                    <label><input type="radio" name="quiz-mode" value="review-all"><span>📚 Consulter Toutes les Cartes</span></label>
                     <label><input type="radio" name="quiz-mode" value="custom"><span>Personnalisé:</span></label>
                     <div id="custom-settings" class="hidden">
                         <label for="custom-time">Temps (min):</label>
@@ -157,7 +158,24 @@
             </div>
         </div>
 
-        <!-- Écran 4: Paramètres & Statistiques Locales -->
+        <!-- Écran 4: Cartes de révision -->
+        <div id="review-screen" class="screen hidden">
+            <div class="card">
+                <div class="review-header">
+                    <h2 id="review-quiz-title">Consultation : Titre du Quiz</h2>
+                    <div class="review-controls">
+                        <label for="review-search-input">Rechercher :</label>
+                        <input type="search" id="review-search-input" placeholder="Filtrer par texte de question...">
+                        <button id="review-back-to-dashboard-btn" class="btn-secondary">Retour</button>
+                    </div>
+                </div>
+                <div id="review-content-area">
+                    <!-- Les cartes de révision seront chargées ici -->
+                    <p>Chargement des cartes...</p>
+                </div>
+            </div>
+        </div>
+        <!-- Écran 5: Paramètres & Statistiques Locales -->
         <div id="settings-screen" class="screen hidden">
             <div class="card">
                 <h2>Paramètres & Statistiques Locales</h2>

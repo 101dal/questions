@@ -21,7 +21,6 @@ export function createQuestionBlock(question, index) {
     const questionBlock = document.createElement('div');
     questionBlock.classList.add('question-block');
     questionBlock.dataset.index = index;
-    // --- Standardized ID Generation ---
     const questionId = question.id || `q_${state.selectedQuizId}_${question.originalIndex ?? index}`;
     questionBlock.dataset.questionId = questionId;
 
@@ -75,26 +74,23 @@ export function createQuestionBlock(question, index) {
             break;
         case 'association':
             renderAssociationOptions(optionsDiv, question, index);
-            // Submit button is separate
-            const submitAssocBtn = document.createElement('button');
-            submitAssocBtn.textContent = "Valider Associations";
-            submitAssocBtn.classList.add('btn-primary', 'submit-answer-btn', 'association-submit');
-            submitAssocBtn.addEventListener('click', handleAnswerSelection);
-            questionBlock.appendChild(submitAssocBtn); // Append directly to block
             break;
         case 'ordre':
             renderOrdreOptions(optionsDiv, question);
-            // Submit button is separate
-            const submitOrderBtn = document.createElement('button');
-            submitOrderBtn.textContent = "Valider l'ordre";
-            submitOrderBtn.classList.add('btn-primary', 'submit-answer-btn');
-            submitOrderBtn.addEventListener('click', handleAnswerSelection);
-            optionsDiv.appendChild(submitOrderBtn); // Append to options div
             break;
         default:
             optionsDiv.textContent = `Type de question inconnu: ${question.type}`;
     }
     questionBlock.appendChild(optionsDiv);
+
+    const validationContainer = document.createElement('div');
+    validationContainer.classList.add('validation-container'); // Pour styler si besoin
+    const validateButton = document.createElement('button');
+    validateButton.textContent = 'Valider';
+    validateButton.classList.add('btn-primary', 'universal-validate-btn'); // Classe spécifique
+    // L'écouteur est délégué au niveau du bloc question ou géré par handleAnswerSelection
+    validationContainer.appendChild(validateButton);
+    questionBlock.appendChild(validationContainer); // Ajoute le bouton après les options
 
     // Immediate Feedback Area
     const feedbackDiv = document.createElement('div');
@@ -129,7 +125,6 @@ function renderQCMOptions(container, question, answerInfo, index) {
         // Render markdown for options if needed
         button.innerHTML = renderMarkdown(String(displayValue)); // Use innerHTML for markdown
         button.dataset.answer = String(option); // Store original value as string
-        button.addEventListener('click', handleAnswerSelection);
         container.appendChild(button);
     });
 }
@@ -163,13 +158,6 @@ function renderQCMMultiOptions(container, question, answerInfo, index) {
         label.appendChild(span);
         container.appendChild(label);
     });
-
-    // Submit button for QCM-Multi
-    const submitMultiBtn = document.createElement('button');
-    submitMultiBtn.textContent = 'Valider Sélection';
-    submitMultiBtn.classList.add('btn-primary', 'submit-answer-btn');
-    submitMultiBtn.addEventListener('click', handleAnswerSelection);
-    container.appendChild(submitMultiBtn);
 }
 
 function renderTexteLibreInput(container) {
@@ -178,13 +166,14 @@ function renderTexteLibreInput(container) {
     input.placeholder = "Tapez votre réponse...";
     container.appendChild(input);
 
-    const submitBtn = document.createElement('button');
-    submitBtn.textContent = 'Valider';
-    submitBtn.classList.add('btn-primary', 'submit-answer-btn');
-    submitBtn.addEventListener('click', handleAnswerSelection);
-    container.appendChild(submitBtn);
-
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitBtn.click(); });
+    // L'appui sur Entrée devra maintenant déclencher un clic sur le bouton universel
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            // Trouve le bouton Valider associé à ce bloc et le clique
+            const questionBlock = input.closest('.question-block');
+            questionBlock?.querySelector('.universal-validate-btn')?.click();
+        }
+    });
 }
 
 function renderAssociationOptions(container, question, index) {

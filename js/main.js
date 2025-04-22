@@ -6,6 +6,7 @@ import * as library from './library.js';
 import * as importExport from './importExport.js';
 import * as quizEngine from './quizEngine.js';
 import * as results from './results.js';
+import * as review from './review.js';
 import * as settings from './settings.js';
 import * as stats from './stats.js';
 
@@ -94,6 +95,11 @@ function showScreenAndRender(screenId) {
             break;
         case 'results':
             // Rendering is done within results.showResults() before showing screen
+            break;
+        case 'review': // <<< NOUVEAU CAS
+            // Le rendu est géré par review.showReviewScreen lors de l'appel initial
+            // On pourrait ajouter un rendu ici si on revient à l'écran sans relancer
+            // review.renderReviewCards(review.allQuestionsData); // Exemple si besoin de re-render
             break;
         case 'settings':
             settings.renderSettingsScreen();
@@ -206,6 +212,19 @@ function setupEventListeners() {
     document.addEventListener('mozfullscreenchange', ui.updateFullscreenButton);
     document.addEventListener('MSFullscreenChange', ui.updateFullscreenButton);
 
+    // --- Listeners pour l'écran Review ---
+    dom.review.searchInput.addEventListener('input', review.handleReviewSearch);
+    dom.review.backToDashboardBtn.addEventListener('click', review.handleReviewBackToDashboard);
+
+    // --- NOUVEL ÉCOUTEUR DÉLÉGUÉ POUR LE CONTENU DU QUIZ ---
+    dom.quiz.contentArea.addEventListener('click', (event) => {
+        // Appeler handleAnswerSelection si le clic provient du contentArea
+        // handleAnswerSelection vérifiera ensuite la cible exacte (option, bouton valider, etc.)
+        if (state.isQuizActive) { // Vérifier si le quiz est actif avant de traiter
+            quizEngine.handleAnswerSelection(event);
+        }
+    });
+
     // Results Screen
     dom.results.restartQuizBtn.addEventListener('click', () => {
         results.handleRestartQuiz();
@@ -223,6 +242,8 @@ function setupEventListeners() {
     dom.results.backToDashboardBtn.addEventListener('click', () => showScreenAndRender('dashboard'));
     dom.results.detailedResultsFiltersDiv.addEventListener('click', results.handleFilterResults); // Delegate filter clicks
     // Mark buttons listeners added dynamically in results.displayDetailedResults
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
 
     // Settings Screen (Listeners setup within settings.js)
     settings.setupSettingsScreen(); // Call setup for settings listeners
@@ -244,6 +265,145 @@ function handleClearHistory() {
             settings.renderSettingsScreen();
         }
     }
+}
+
+function handleGlobalKeyDown(event) {
+    // Ne rien faire si le quiz n'est pas actif ou si l'écran n'est pas le quiz
+    if (!state.isQuizActive || !dom.screens.quiz.classList.contains('active')) {
+        return;
+    }
+
+    const activeElement = document.activeElement;
+    const isInputFocused = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA');
+
+    // --- RACCOURCI VALIDATION (Entrée / Espace) ---
+    // Autorisé même si focus sur input[type=text] pour valider la réponse texte_libre
+    if (event.key === 'Enter' || event.key === ' ') {
+        // Si c'est Entrée ET le focus est sur un input texte, la validation est déjà gérée
+        // par l'écouteur interne de l'input dans questionRenderer. Ne pas doubler.
+        if (event.key === 'Enter' && activeElement?.type === 'text') {
+            console.log("Enter on text input handled by input listener.");
+            return;
+        }
+
+        // Si Espace et focus sur input/textarea, ignorer (sauf si on veut le permettre ?)
+        if (event.key === ' ' && isInputFocused) {
+            console.log("Space ignored in input/textarea.");
+            return;
+        }
+
+        event.preventDefault(); // Empêche Espace de défiler, Entrée de potentiellement soumettre un formulaire (si existant)
+
+        const currentQuestionBlock = dom.quiz.contentArea.querySelector(`.question-block[data-index="${state.currentQuestionIndex}"]`);
+        if (currentQuestionBlock) {
+            const validateButton = currentQuestionBlock.querySelector('.universal-validate-btn');
+            if (validateButton && !validateButton.disabled) {
+                console.log(`Key '${event.key}' pressed, simulating validate button click for index:`, state.currentQuestionIndex);
+                validateButton.click(); // Déclenche handleAnswerSelection
+            } else {
+                console.warn(`Key '${event.key}' pressed, but validate button not found or disabled.`);
+            }
+        } else {
+            console.warn(`Key '${event.key}' pressed, but current question block not found.`);
+        }
+        return; // Validation traitée, on arrête ici
+    }
+
+    // --- AUTRES RACCOURCIS (bloqués si focus sur input/textarea) ---
+    if (isInputFocused) {
+        // console.log("Other shortcuts blocked due to input focus.");
+        return;
+    }
+
+    // --- RACCOURCI MARQUAGE (M) ---
+    if (event.key === 'm' || event.key === 'M') {
+        event.preventDefault();
+        const currentQuestionBlock = dom.quiz.contentArea.querySelector(`.question-block[data-index="${state.currentQuestionIndex}"]`);
+        if (currentQuestionBlock) {
+            const markButton = currentQuestionBlock.querySelector('.mark-question-btn');
+            if (markButton) {
+                console.log("'M' key pressed, simulating mark button click.");
+                markButton.click(); // Déclenche handleMarkQuestion
+            }
+        }
+        return; // Marquage traité
+    }
+
+    // --- RACCOURCIS NAVIGATION (Flèches Gauche/Droite) ---
+    // Utile principalement si navigation autorisée ET feedback OFF (où il n'y a pas d'avance auto)
+    // Ou si on veut forcer la navigation même avec feedback ON (peut être déroutant?)
+    // Condition: Autoriser la navigation OU être en mode feedback instantané (où on peut vouloir naviguer après)
+    const canNavigate = state.currentQuizConfig.allowNavBack || state.currentQuizConfig.instantFeedback;
+
+    if (canNavigate && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
+        event.preventDefault();
+        const direction = (event.key === 'ArrowRight') ? 1 : -1;
+        const targetIndex = state.currentQuestionIndex + direction;
+
+        // Vérifier si la cible est valide
+        if (targetIndex >= 0 && targetIndex < state.questionsToAsk.length) {
+            // Si navigation arrière autorisée, on peut aller n'importe où
+            // Si seulement feedback instantané, on ne peut aller que vers l'avant (sauf si allowNavBack aussi)
+            if (state.currentQuizConfig.allowNavBack || direction === 1) {
+
+                // Peut-on naviguer vers une question non encore répondue ? (Décision UX)
+                // Pour l'instant : Oui, on permet. Si on voulait bloquer :
+                // if (state.userAnswers[targetIndex] !== null || direction === -1) { // Permet retour vers répondu, avance vers n'importe quoi
+                // }
+
+                console.log(`Arrow key '${event.key}' pressed, navigating to index:`, targetIndex);
+                quizEngine.displayQuestion(targetIndex); // Affiche la question cible
+
+            } else {
+                console.log("Arrow key navigation blocked (trying to go back without allowNavBack).");
+            }
+        } else {
+            console.log("Arrow key navigation blocked (reached beginning/end).");
+            // Optionnel: aller aux résultats si flèche droite sur la dernière question ?
+            if (event.key === 'ArrowRight' && state.currentQuestionIndex === state.questionsToAsk.length - 1) {
+                const finishButton = dom.quiz.finishQuizBtn;
+                if (!finishButton.classList.contains('hidden')) {
+                    console.log("ArrowRight on last question, clicking Finish button.");
+                    finishButton.click();
+                }
+            }
+        }
+        return; // Navigation traitée
+    }
+
+    // --- RACCOURCIS SÉLECTION QCM/VRAI_FAUX (Touches 1, 2, 3...) ---
+    if (/^[1-9]$/.test(event.key)) {
+        event.preventDefault();
+        const choiceIndex = parseInt(event.key, 10) - 1; // Touche '1' -> index 0
+
+        const currentQuestionBlock = dom.quiz.contentArea.querySelector(`.question-block[data-index="${state.currentQuestionIndex}"]`);
+        if (currentQuestionBlock) {
+            const questionType = state.questionsToAsk[state.currentQuestionIndex]?.type;
+
+            if (questionType === 'qcm' || questionType === 'vrai_faux') {
+                const optionsButtons = currentQuestionBlock.querySelectorAll('.answer-options button.answer-btn');
+                if (choiceIndex < optionsButtons.length) {
+                    console.log(`Number key '${event.key}' pressed, selecting QCM option index:`, choiceIndex);
+                    // Simuler le clic sur le bouton d'option (mettra à jour l'UI via handleAnswerSelection)
+                    optionsButtons[choiceIndex].click();
+                }
+            } else if (questionType === 'qcm_multi') {
+                const optionsCheckboxes = currentQuestionBlock.querySelectorAll('.answer-options input[type="checkbox"]');
+                if (choiceIndex < optionsCheckboxes.length) {
+                    console.log(`Number key '${event.key}' pressed, toggling QCM-Multi option index:`, choiceIndex);
+                    // Inverser l'état de la checkbox et déclencher l'événement 'change' si nécessaire
+                    // (Le clic sur le label pourrait être plus simple à simuler)
+                    const targetCheckbox = optionsCheckboxes[choiceIndex];
+                    targetCheckbox.checked = !targetCheckbox.checked; // Inverser l'état
+                    // Simuler un clic sur le label parent pour que handleAnswerSelection (si modifié pour écouter label) puisse réagir
+                    // targetCheckbox.closest('label')?.click(); // Moins fiable
+                    // Ou simplement laisser l'état changer, handleAnswerSelection le lira lors de la validation
+                }
+            }
+        }
+        return; // Sélection traitée
+    }
+
 }
 
 

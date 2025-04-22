@@ -7,6 +7,7 @@ import { getAnswerFormat, levenshtein, shuffleArray } from './utils.js';
 import { createQuestionBlock } from './questionRenderer.js';
 import { showResults, handleReturnItemToLeft } from './results.js'; // Import showResults and handleReturnItemToLeft
 import { recalculateLocalStats } from './stats.js'; // Import stat calculation
+import { showReviewScreen } from './review.js';
 
 // --- Quiz Lifecycle ---
 
@@ -21,6 +22,14 @@ export function startQuiz() {
 
     // 1. Read Configuration
     const selectedMode = document.querySelector('input[name="quiz-mode"]:checked').value;
+
+    if (selectedMode === 'review-all') {
+        console.log("Starting Review Mode...");
+        // Appeler la fonction du module review.js pour afficher cet écran
+        showReviewScreen(); // Assurez-vous que showReviewScreen est importé
+        return; // Arrêter l'exécution de startQuiz ici
+    }
+
     const allowNavBack = dom.dashboard.allowNavigationCheckbox.checked;
     const instantFeedback = dom.dashboard.instantFeedbackCheckbox.checked;
     const showExpl = dom.dashboard.showExplOnIncorrectCheckbox.checked && instantFeedback;
@@ -224,7 +233,13 @@ export function updateQuestionGridNav() {
         if (state.isQuizActive && i === state.currentQuestionIndex) item.classList.add('current');
 
         const answerInfo = state.userAnswers[i];
-        if (answerInfo !== null) {
+        let answerContent = null;
+
+        if (answerInfo) {
+            answerContent = answerInfo.answer;
+        }
+
+        if (answerContent !== null) {
             item.classList.add('answered');
             if (state.currentQuizConfig.instantFeedback || !state.isQuizActive) {
                 item.classList.toggle('correct', !!answerInfo.isCorrect);
@@ -232,7 +247,7 @@ export function updateQuestionGridNav() {
             }
         }
 
-        if (state.currentQuizConfig.allowNavBack && answerInfo !== null && i !== state.currentQuestionIndex) {
+        if (state.currentQuizConfig.allowNavBack && answerContent !== null && i !== state.currentQuestionIndex) {
             item.classList.add('clickable');
             item.addEventListener('click', () => {
                 if (state.isQuizActive) displayQuestion(i);
@@ -251,121 +266,182 @@ export function updateQuizHeader() {
 }
 
 export function displayQuestion(index) {
-    console.log(state.isQuizActive, index, state.questionsToAsk); // DEBUG
     if (!state.isQuizActive || index < 0 || index >= state.questionsToAsk.length) {
         console.warn("Invalid index or quiz not active for displayQuestion:", index);
         return;
     }
-    // Clear previous feedback
+    // Clear previous feedback (important for nav back/forth)
     document.querySelectorAll('.immediate-feedback.visible').forEach(fb => fb.classList.remove('visible'));
 
     state.currentQuestionIndex = index;
     const question = state.questionsToAsk[index];
-    dom.quiz.contentArea.innerHTML = ''; // Clear previous
+    dom.quiz.contentArea.innerHTML = ''; // Clear previous content
 
+    // Create the question block using the renderer
     const questionBlock = createQuestionBlock(question, index); // From questionRenderer.js
     dom.quiz.contentArea.appendChild(questionBlock);
 
-    // Handle re-enabling/restoring answers if navigating back
-    if (state.currentQuizConfig.allowNavBack && state.userAnswers[index] !== null) {
-        enableQuestionBlockInputs(questionBlock);
-        restoreAnswerSelectionUI(questionBlock, state.userAnswers[index].answer, question.type);
-    } else if (state.userAnswers[index] !== null && !state.currentQuizConfig.allowNavBack) {
-        disableQuestionBlockInputs(questionBlock); // Keep disabled if no nav back & answered
+    // --- CONDITION IMPORTANTE ---
+    // Gérer l'état des inputs (activé/désactivé/restauré) UNIQUEMENT ici.
+    // NE PAS appeler processAnswer ou advanceQuestion ici.
+
+    if (state.userAnswers[index].answer !== null) { // Si la question a DEJA une réponse enregistrée
+        if (state.currentQuizConfig.allowNavBack) {
+            // Nav Back: Réactiver les inputs et restaurer l'UI de la réponse
+            enableQuestionBlockInputs(questionBlock);
+            restoreAnswerSelectionUI(questionBlock, state.userAnswers[index].answer, question.type);
+        } else {
+            // Pas de Nav Back: Laisser les inputs désactivés
+            disableQuestionBlockInputs(questionBlock);
+            // Optionnel : Montrer la réponse/feedback si le feedback instantané était activé
+            //             mais cela complexifie car on ne sait pas si c'était la première visite.
+            //             Mieux vaut gérer le feedback uniquement lors de la soumission initiale.
+        }
+    } else {
+        // Si c'est la première fois qu'on voit cette question (userAnswers[index] === null)
+        // Les inputs sont activés par défaut lors de la création dans questionRenderer/enableQuestionBlockInputs
+        // et aucun feedback ne doit être montré.
+        // Assurons-nous qu'ils sont bien actifs (double sécurité)
+        enableQuestionBlockInputs(questionBlock); // Normalement redondant, mais sûr.
     }
+
 
     // Scroll into view logic
     setTimeout(() => {
         document.querySelectorAll('.question-block.focused').forEach(b => b.classList.remove('focused'));
         questionBlock.classList.add('focused');
-        const headerHeight = dom.quiz.header.offsetHeight || 120; // Use header element from dom
+        const headerHeight = dom.quiz.header.offsetHeight || 120;
         const elementPosition = questionBlock.getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 20; // Adjust offset as needed
+        const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 20;
         window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
     }, 50);
 
-
     updateQuizHeader();
     state.questionStartTime = Date.now();
-    state.isSubmittingAnswer = false;
+    state.isSubmittingAnswer = false; // Réinitialiser le verrou de soumission
 }
 
 
 // --- Answering Logic ---
-
+/**
+ * Gère les interactions utilisateur au sein d'un bloc question :
+ * - Sélection d'une option (QCM, V/F, QCM-Multi).
+ * - Clic sur le bouton Valider universel.
+ */
 export function handleAnswerSelection(event) {
-    if (state.isSubmittingAnswer || !state.isQuizActive) return;
     const targetElement = event.target;
     const questionBlock = targetElement.closest('.question-block');
-    if (!questionBlock) return;
+    if (!questionBlock || !state.isQuizActive || state.isSubmittingAnswer) {
+        // Ne rien faire si le quiz n'est pas actif, si on est déjà en train de soumettre,
+        // ou si le clic est en dehors d'un bloc question.
+        if (state.isSubmittingAnswer) console.log("handleAnswerSelection blocked: already submitting");
+        return;
+    }
 
     const questionIndex = parseInt(questionBlock.dataset.index, 10);
     const question = state.questionsToAsk[questionIndex];
-    let userAnswer;
-    let isValidInput = true;
 
-    // Extract User Answer Based on Type
-    switch (question.type) {
-        case 'qcm':
-        case 'vrai_faux':
-            const selectedButton = targetElement.closest('button.answer-btn');
-            if (!selectedButton) return;
-            const answerString = selectedButton.dataset.answer;
-            userAnswer = (answerString === 'true') ? true : (answerString === 'false' ? false : answerString);
-            questionBlock.querySelectorAll('.answer-options button').forEach(btn => btn.classList.remove('selected'));
-            selectedButton.classList.add('selected');
-            break;
-        case 'texte_libre':
-            const inputElement = questionBlock.querySelector('.answer-options input[type="text"]');
-            userAnswer = inputElement.value.trim();
-            if (userAnswer === '') { showToast("Veuillez entrer une réponse.", "warning"); isValidInput = false; }
-            break;
-        case 'qcm_multi':
-            const checkedBoxes = questionBlock.querySelectorAll('.answer-options input[type="checkbox"]:checked');
-            userAnswer = Array.from(checkedBoxes).map(cb => cb.value).sort(); // Sort for consistent comparison
-            if (userAnswer.length === 0) { showToast("Veuillez sélectionner au moins une réponse.", "warning"); isValidInput = false; }
-            break;
-        case 'association':
-            if (!targetElement.classList.contains('submit-answer-btn')) return; // Only trigger on submit
-            userAnswer = {};
-            const matchedTargets = questionBlock.querySelectorAll('.drop-target.matched');
-            matchedTargets.forEach(target => {
-                if (target.dataset.targetId && target.dataset.pairedItemId) {
-                    // Map: Target ID (Right Column Item) -> Paired Item ID (Left Column Item)
-                    userAnswer[target.dataset.targetId] = target.dataset.pairedItemId;
+    // --- CAS 1 : Clic sur le bouton Valider ---
+    if (targetElement.closest('.universal-validate-btn')) {
+        console.log("Validate button clicked for index:", questionIndex);
+        // Extraire la réponse ACTUELLE basée sur l'état de l'UI
+        let userAnswer;
+        let isValidInput = true;
+
+        switch (question.type) {
+            case 'qcm':
+            case 'vrai_faux':
+                const selectedButton = questionBlock.querySelector('.answer-options button.selected');
+                if (!selectedButton) {
+                    showToast("Veuillez sélectionner une réponse.", "warning");
+                    isValidInput = false;
+                } else {
+                    const answerString = selectedButton.dataset.answer;
+                    userAnswer = (answerString === 'true') ? true : (answerString === 'false' ? false : answerString);
                 }
-            });
-            const totalTargets = questionBlock.querySelectorAll('.drop-target').length;
-            if (matchedTargets.length !== totalTargets) { // Check if all targets are matched
-                showToast("Veuillez associer tous les éléments.", "warning");
-                isValidInput = false;
-            }
-            break;
-        case 'ordre':
-            if (!targetElement.classList.contains('submit-answer-btn')) return;
-            const itemsContainer = questionBlock.querySelector('.ordering-items-container');
-            if (!itemsContainer) { isValidInput = false; break; }
-            userAnswer = Array.from(itemsContainer.querySelectorAll('.ordering-item')).map(item => item.textContent.trim()); // Get text content
-            break;
-        default:
-            console.error("Unknown question type in handleAnswerSelection:", question.type);
+                break;
+            case 'texte_libre':
+                const inputElement = questionBlock.querySelector('.answer-options input[type="text"]');
+                userAnswer = inputElement.value.trim();
+                if (userAnswer === '') {
+                    showToast("Veuillez entrer une réponse.", "warning");
+                    isValidInput = false;
+                }
+                break;
+            case 'qcm_multi':
+                const checkedBoxes = questionBlock.querySelectorAll('.answer-options input[type="checkbox"]:checked');
+                userAnswer = Array.from(checkedBoxes).map(cb => cb.value).sort();
+                if (userAnswer.length === 0) {
+                    showToast("Veuillez sélectionner au moins une réponse.", "warning");
+                    isValidInput = false;
+                }
+                break;
+            case 'association':
+                userAnswer = {};
+                const matchedTargets = questionBlock.querySelectorAll('.drop-target.matched');
+                matchedTargets.forEach(target => {
+                    if (target.dataset.targetId && target.dataset.pairedItemId) {
+                        userAnswer[target.dataset.targetId] = target.dataset.pairedItemId;
+                    }
+                });
+                const totalTargets = questionBlock.querySelectorAll('.drop-target').length;
+                if (matchedTargets.length !== totalTargets) {
+                    showToast("Veuillez associer tous les éléments.", "warning");
+                    isValidInput = false;
+                }
+                break;
+            case 'ordre':
+                const itemsContainer = questionBlock.querySelector('.ordering-items-container');
+                if (!itemsContainer) { isValidInput = false; break; } // Sécurité
+                userAnswer = Array.from(itemsContainer.querySelectorAll('.ordering-item')).map(item => item.textContent.trim());
+                // Valider si l'ordre a changé de l'initial? Optionnel. Pour l'instant on valide toujours.
+                break;
+            default:
+                console.error("Unknown question type during validation:", question.type);
+                isValidInput = false; // Ne pas traiter un type inconnu
+                break;
+        }
+
+        // Si l'input est invalide, arrêter ici (après avoir montré le toast)
+        if (!isValidInput) {
             return;
-    }
+        }
 
-    if (!isValidInput) return; // Stop if input was invalid (e.g., empty text, nothing selected)
+        // --- Input Valide -> Verrouiller et Traiter ---
+        state.isSubmittingAnswer = true;
+        disableQuestionBlockInputs(questionBlock); // Désactiver TOUT, y compris le bouton Valider
+        processAnswer(questionIndex, userAnswer); // Évaluer la réponse
 
-    state.isSubmittingAnswer = true; // Lock processing
-    disableQuestionBlockInputs(questionBlock);
-    processAnswer(questionIndex, userAnswer);
+        // Logique de Feedback & Avancement
+        if (state.currentQuizConfig.instantFeedback) {
+            showImmediateFeedback(questionBlock, state.userAnswers[questionIndex].isCorrect);
+            playSound(state.userAnswers[questionIndex].isCorrect ? 'correct' : 'incorrect');
+            setTimeout(advanceQuestion, FEEDBACK_DELAY);
+        } else {
+            playSound('click'); // Son pour la validation
+            // Pas de feedback instantané, avancer directement
+            setTimeout(advanceQuestion, ADVANCE_DELAY);
+        }
 
-    // Feedback & Advance Logic
-    if (state.currentQuizConfig.instantFeedback) {
-        showImmediateFeedback(questionBlock, state.userAnswers[questionIndex].isCorrect);
-        playSound(state.userAnswers[questionIndex].isCorrect ? 'correct' : 'incorrect');
-        setTimeout(advanceQuestion, FEEDBACK_DELAY);
+        // --- CAS 2 : Clic sur une option de réponse (PAS le bouton Valider) ---
+    } else if (targetElement.closest('.answer-btn')) { // Clic sur un bouton QCM / V/F
+        const clickedButton = targetElement.closest('.answer-btn');
+        // Mettre à jour seulement l'UI de sélection
+        questionBlock.querySelectorAll('.answer-options button.selected').forEach(btn => btn.classList.remove('selected'));
+        clickedButton.classList.add('selected');
+        // playSound('select'); // Optionnel : son différent pour sélection
+        console.log("QCM option selected, UI updated for index:", questionIndex);
+        // NE PAS valider ni avancer ici
+
+    } else if (targetElement.closest('.checkbox-label') || targetElement.matches('input[type="checkbox"]')) { // Clic sur un label ou checkbox QCM-Multi
+        // L'état de la checkbox est géré nativement par le navigateur.
+        // On pourrait ajouter un feedback visuel si besoin, mais ce n'est généralement pas nécessaire.
+        console.log("QCM-Multi checkbox toggled for index:", questionIndex);
+        // NE PAS valider ni avancer ici
+
     } else {
-        playSound('click');
-        setTimeout(advanceQuestion, ADVANCE_DELAY);
+        // Clic ailleurs dans le bloc (texte, espace vide, etc.) - ne rien faire
+        // console.log("Clicked elsewhere in block, no action taken.");
     }
 }
 
@@ -555,7 +631,7 @@ export function processAnswer(questionIndex, userAnswer) {
                 console.log(error, error <= 0.15);
                 isCorrect = (error <= 0.15); // Lower than 15% means correct answer
                 break;
-                // isCorrect = String(userAnswer).trim().toLowerCase() === String(correctAnswer).trim().toLowerCase(); break;
+            // isCorrect = String(userAnswer).trim().toLowerCase() === String(correctAnswer).trim().toLowerCase(); break;
             case 'qcm_multi':
                 const correctSorted = [...(Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer])].sort();
                 // userAnswer is already sorted from handleAnswerSelection
@@ -658,9 +734,10 @@ export function recalculateCurrentSessionStats() {
 
 
 export function advanceQuestion() {
-    state.isSubmittingAnswer = false; // Unlock
+    // Déverrouiller la soumission pour la prochaine question *au début*
+    state.isSubmittingAnswer = false;
 
-    // Hide feedback from previous question
+    // Cacher le feedback de la question actuelle (si visible)
     const currentBlock = dom.quiz.contentArea.querySelector(`.question-block[data-index="${state.currentQuestionIndex}"]`);
     if (currentBlock) {
         const feedbackDiv = currentBlock.querySelector('.immediate-feedback');
@@ -669,19 +746,21 @@ export function advanceQuestion() {
 
     const nextIndex = state.currentQuestionIndex + 1;
     if (nextIndex < state.questionsToAsk.length) {
-        displayQuestion(nextIndex);
+        displayQuestion(nextIndex); // Afficher la question suivante
     } else {
-        // Quiz finished naturally
-        state.isQuizActive = false;
+        // Quiz terminé
+        setQuizActive(false); // Utiliser le setter si disponible
         if (state.timerInterval) clearInterval(state.timerInterval);
+        state.timerInterval = null; // Effacer l'ID de l'intervalle
         if (!state.quizEndTime) state.quizEndTime = Date.now();
+
+        // Afficher le bouton "Voir les Résultats"
         dom.quiz.finishQuizBtn.classList.remove('hidden');
         dom.quiz.cancelQuizBtn.classList.add('hidden');
-        updateQuestionGridNav(); // Show final state
+        updateQuestionGridNav(); // Mettre à jour la grille pour montrer l'état final
         showToast("Session terminée ! Cliquez sur 'Voir les Résultats'.", "success");
         playSound('finish');
         dom.quiz.finishQuizBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // Results are shown when user clicks the finish button
     }
 }
 
@@ -764,31 +843,84 @@ export function handleCancelQuiz() {
 
 
 // --- Configuration Logic (Moved from main event handler area) ---
+// Au début de handleConfigChange dans quizEngine.js
 export function handleConfigChange() {
     const selectedMode = document.querySelector('input[name="quiz-mode"]:checked')?.value;
-    if (!selectedMode) return; // Should not happen
+    if (!selectedMode) return;
 
-    dom.dashboard.customSettingsDiv.classList.toggle('hidden', selectedMode !== 'custom');
+    // --- Désactiver les options non pertinentes pour certains modes ---
+    const isReviewMode = selectedMode === 'review-all';
+    const disableTimeAndNav = isReviewMode; // Désactiver temps et options de nav/feedback pour review-all
+
+    dom.dashboard.customSettingsDiv.classList.toggle('hidden', selectedMode !== 'custom' || isReviewMode);
     dom.dashboard.errorSessionsCountInput.disabled = (selectedMode !== 'errors');
 
-    // Logic for enabling/disabling dependent options
-    if (dom.dashboard.allowNavigationCheckbox.checked) {
-        dom.dashboard.instantFeedbackCheckbox.checked = false;
-        dom.dashboard.instantFeedbackCheckbox.disabled = true;
-        dom.dashboard.showExplOnIncorrectCheckbox.checked = false;
-        dom.dashboard.showExplOnIncorrectCheckbox.disabled = true;
+    // Désactivation pour le mode "review-all"
+    dom.dashboard.allowNavigationCheckbox.disabled = disableTimeAndNav;
+    dom.dashboard.instantFeedbackCheckbox.disabled = disableTimeAndNav;
+    dom.dashboard.showExplOnIncorrectCheckbox.disabled = disableTimeAndNav;
+    dom.dashboard.customTimeInput.disabled = disableTimeAndNav; // Désactiver aussi le temps custom
+    dom.dashboard.customQuestionsInput.disabled = (selectedMode === 'review-all'); // Pas de sélection de nombre pour ce mode
+
+    // Appliquer l'opacité pour indiquer la désactivation
+    [
+        dom.dashboard.allowNavigationCheckbox,
+        dom.dashboard.instantFeedbackCheckbox,
+        dom.dashboard.showExplOnIncorrectCheckbox,
+        dom.dashboard.customTimeInput,
+        dom.dashboard.customQuestionsInput
+    ].forEach(el => {
+        const label = el.closest('label') || el.previousElementSibling;
+        const opacityValue = el.disabled ? '0.5' : '1'; // Déterminer la valeur d'opacité
+
+        // Appliquer l'opacité à l'élément lui-même
+        el.style.opacity = opacityValue;
+        // Appliquer au label trouvé s'il existe
+        if (label) label.style.opacity = opacityValue;
+
+        // --- CORRECTION : Vérifier avant d'assigner ---
+        const errorGroupLabel = el.closest('.has-extra-input');
+        if (errorGroupLabel) {
+            errorGroupLabel.style.opacity = opacityValue;
+        }
+        const customSettingLabel = el.closest('#custom-settings label');
+        // Note: el.closest('#custom-settings label') trouvera le label contenant l'input custom,
+        // ce qui est probablement ce que vous vouliez, similaire à la recherche via `label`.
+        // Si vous vouliez cibler un conteneur #custom-settings spécifique, la logique serait différente.
+        if (customSettingLabel) {
+            customSettingLabel.style.opacity = opacityValue;
+        }
+        // ---------------------------------------------
+    });
+
+    console.log("HELLO")
+
+    // --- Logique existante pour instant feedback / nav back ---
+    // (Ne s'appliquera pas si les options sont désactivées par le code ci-dessus)
+    if (!disableTimeAndNav) { // Appliquer seulement si pas en mode review
+        if (dom.dashboard.allowNavigationCheckbox.checked) {
+            // ... logique existante ...
+            dom.dashboard.instantFeedbackCheckbox.checked = false;
+            dom.dashboard.instantFeedbackCheckbox.disabled = true;
+            dom.dashboard.showExplOnIncorrectCheckbox.checked = false;
+            dom.dashboard.showExplOnIncorrectCheckbox.disabled = true;
+            dom.dashboard.instantFeedbackCheckbox.closest('label').style.opacity = '0.5';
+            dom.dashboard.showExplOnIncorrectCheckbox.closest('label').style.opacity = '0.5';
+        } else {
+            // ... logique existante ...
+            dom.dashboard.instantFeedbackCheckbox.disabled = false;
+            dom.dashboard.instantFeedbackCheckbox.closest('label').style.opacity = '1';
+            const isInstantFeedbackChecked = dom.dashboard.instantFeedbackCheckbox.checked;
+            dom.dashboard.showExplOnIncorrectCheckbox.disabled = !isInstantFeedbackChecked;
+            dom.dashboard.showExplOnIncorrectCheckbox.closest('label').style.opacity = isInstantFeedbackChecked ? '1' : '0.5';
+            if (!isInstantFeedbackChecked) {
+                dom.dashboard.showExplOnIncorrectCheckbox.checked = false;
+            }
+        }
+    } else {
+        // Si en mode review, s'assurer que les options dépendantes sont aussi visuellement désactivées
         dom.dashboard.instantFeedbackCheckbox.closest('label').style.opacity = '0.5';
         dom.dashboard.showExplOnIncorrectCheckbox.closest('label').style.opacity = '0.5';
-    } else {
-        dom.dashboard.instantFeedbackCheckbox.disabled = false;
-        dom.dashboard.instantFeedbackCheckbox.closest('label').style.opacity = '1';
-        // Explanation option depends ONLY on instant feedback when navigation is OFF
-        const isInstantFeedbackChecked = dom.dashboard.instantFeedbackCheckbox.checked;
-        dom.dashboard.showExplOnIncorrectCheckbox.disabled = !isInstantFeedbackChecked;
-        dom.dashboard.showExplOnIncorrectCheckbox.closest('label').style.opacity = isInstantFeedbackChecked ? '1' : '0.5';
-        if (!isInstantFeedbackChecked) {
-            dom.dashboard.showExplOnIncorrectCheckbox.checked = false;
-        }
     }
 }
 
