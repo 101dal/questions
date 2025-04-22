@@ -164,6 +164,7 @@ function renderTexteLibreInput(container) {
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = "Tapez votre réponse...";
+    input.focus();
     container.appendChild(input);
 
     // L'appui sur Entrée devra maintenant déclencher un clic sur le bouton universel

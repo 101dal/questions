@@ -307,45 +307,86 @@ export function handleRestartQuiz() {
 }
 
 export function handleRestartErrors() {
-    if (!state.activeQuizContent || !state.currentQuizConfig.quizId) {
-        showToast("Impossible de relancer les erreurs : quiz non chargé.", "error"); return;
+    // --- Vérification initiale ---
+    const originalQuizId = state.currentQuizConfig.quizId; // Garde l'ID du quiz original
+    if (!originalQuizId) {
+        showToast("Impossible de relancer les erreurs : ID du quiz original manquant.", "error"); return;
     }
 
-    // Get error questions from the *last completed attempt* (userAnswers)
-    const errorQuestionsFromLastAttempt = state.userAnswers
-        .map((answer, index) => (answer && !answer.isCorrect) ? state.questionsToAsk[index] : null)
-        .filter(q => q !== null);
-
-    if (errorQuestionsFromLastAttempt.length === 0) {
-        showToast("Félicitations, aucune erreur dans cette session !", "success"); return;
+    // --- Recharger le contenu complet du quiz original ---
+    // state.activeQuizContent peut avoir été perdu ou être incorrect après une session d'erreurs
+    const originalQuizContent = loadQuizContent(originalQuizId);
+    if (!originalQuizContent || !originalQuizContent.questions) {
+        showToast("Impossible de relancer les erreurs : contenu du quiz original introuvable.", "error");
+        // Optionnel : essayer de garder le contenu actuel s'il existe ? Moins sûr.
+        // if (!state.activeQuizContent) { return; } // Si même le contenu actuel est perdu
+        return;
     }
-    console.log(`Restarting with ${errorQuestionsFromLastAttempt.length} error(s)...`);
+    // Mettre à jour state.activeQuizContent avec le contenu frais du quiz original
+    // C'est crucial pour que la recherche des questions d'erreur fonctionne correctement
+    setActiveQuizContent(originalQuizId, originalQuizContent); // Assurez-vous que setActiveQuizContent est importé/disponible
 
-    // Modify state for the new quiz session
-    resetQuizState(); // Clear previous quiz state first
-    state.questionsToAsk = shuffleArray(errorQuestionsFromLastAttempt); // Use shuffled errors
-    state.questionsToAsk.forEach((q, idx) => q.quizSessionIndex = idx); // Re-index for this session
+    // --- Identifier les erreurs de la DERNIÈRE session terminée ---
+    // state.userAnswers contient les réponses de la session qui vient de se terminer
+    const errorQuestionIdsFromLastAttempt = new Set();
+    let errorQuestionsFullObjects = []; // Pour stocker les objets questions complets trouvés
 
-    // Adapt current config for the error replay session
+    state.userAnswers.forEach((answer, index) => {
+        if (answer && !answer.isCorrect && answer.questionId) {
+            errorQuestionIdsFromLastAttempt.add(answer.questionId);
+        }
+    });
+
+    if (errorQuestionIdsFromLastAttempt.size === 0) {
+        showToast("Félicitations, aucune erreur dans la dernière session !", "success"); return;
+    }
+
+    // --- Retrouver les objets questions COMPLETS à partir du contenu ORIGINAL ---
+    const allSourceQuestions = originalQuizContent.questions;
+    errorQuestionsFullObjects = allSourceQuestions.filter(q => {
+        const qIdentifier = q.id || `q_${originalQuizId}_${allSourceQuestions.indexOf(q)}`; // Utiliser l'ID standardisé
+        return errorQuestionIdsFromLastAttempt.has(qIdentifier);
+    });
+
+    // Vérifier si on a trouvé les questions
+    if (errorQuestionsFullObjects.length !== errorQuestionIdsFromLastAttempt.size) {
+        console.warn(`N'a pas pu retrouver toutes les questions d'erreur (${errorQuestionsFullObjects.length} trouvées / ${errorQuestionIdsFromLastAttempt.size} attendues). Les IDs ont peut-être changé.`);
+        // Continuer avec ce qu'on a trouvé ? Ou afficher une erreur ?
+        if (errorQuestionsFullObjects.length === 0) {
+            showToast("Erreur : Impossible de retrouver les questions d'erreur (IDs modifiés?).", "error");
+            return;
+        }
+        showToast(`Attention : Certaines questions d'erreur n'ont pu être retrouvées.`, "warning");
+    }
+
+
+    console.log(`Restarting with ${errorQuestionsFullObjects.length} error(s) from last session...`);
+
+    // --- Préparer la nouvelle session d'erreurs ---
+    resetQuizState(); // Réinitialiser l'état de la progression du quiz
+    state.questionsToAsk = shuffleArray(errorQuestionsFullObjects); // Utiliser les objets questions trouvés
+    state.questionsToAsk.forEach((q, idx) => q.quizSessionIndex = idx); // Re-indexer
+
+    // Adapter la configuration (utiliser le titre original de activeQuizContent)
     state.currentQuizConfig = {
-        ...state.currentQuizConfig, // Keep original settings like feedback, nav...
+        ...state.currentQuizConfig, // Garder les options (nav, feedback...)
         mode: 'errors-replay',
         numQuestions: state.questionsToAsk.length,
-        quizTitle: `${state.currentQuizConfig.quizTitle} (Erreurs Session)`,
-        // Decide on time limit for error replay - keep original or make free?
-        // timeLimit: null, // Example: Make error replay untimed
+        quizTitle: `${state.activeQuizContent.quizTitle || 'Quiz'} (Erreurs Session)`, // Utilise le titre du quiz original rechargé
+        // timeLimit: null // Optionnel : Rendre les erreurs non chronométrées
     };
 
-    // Reset progress state for the new session
+    // Réinitialiser les réponses, heure de début, etc. pour la nouvelle session
     state.userAnswers = new Array(state.questionsToAsk.length).fill(null);
     state.startTime = Date.now();
-    state.isQuizActive = true;
+    setQuizActive(true); // Marquer le quiz comme actif
     state.isSubmittingAnswer = false;
-    state.timeLeft = state.currentQuizConfig.timeLimit; // Use potentially modified time limit
+    state.timeLeft = state.currentQuizConfig.timeLimit; // Utiliser la limite de temps (éventuellement modifiée)
 
-    setupQuizUI();
-    showScreen('quiz');
-    displayQuestion(0);
+    // --- Lancer la nouvelle session ---
+    setupQuizUI(); // Préparer l'UI du quiz
+    // showScreen('quiz'); // Géré par main.js après cet appel
+    displayQuestion(0); // Afficher la première question d'erreur
 }
 
 export function handleNewConfig() {
