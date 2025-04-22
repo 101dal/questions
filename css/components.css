@@ -1,0 +1,647 @@
+/* css/components.css */
+
+/* --- Buttons --- */
+button,
+.btn {
+    /* Classe générique pour style de base */
+    display: inline-block;
+    /* Permet margin */
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--border-radius-medium);
+    font-family: var(--font-family-base);
+    font-size: 1rem;
+    /* Ajuster si besoin */
+    font-weight: 700;
+    /* Gras */
+    text-transform: uppercase;
+    /* MAJUSCULES comme Duolingo */
+    letter-spacing: 0.8px;
+    color: var(--text-on-primary);
+    background-color: var(--primary-color);
+    border-bottom: var(--button-border-bottom-width) solid var(--primary-color-dark);
+    cursor: pointer;
+    transition: background-color var(--transition-speed) ease, transform var(--transition-speed) ease, border-color var(--transition-speed) ease;
+    text-align: center;
+    user-select: none;
+    margin: 5px;
+    line-height: 1.4;
+    /* Pour centrage vertical texte */
+}
+
+button:hover:not(:disabled),
+.btn:hover:not(:disabled) {
+    filter: brightness(1.05);
+    /* Éclaircir légèrement */
+}
+
+button:active:not(:disabled),
+.btn:active:not(:disabled) {
+    transform: translateY(calc(var(--button-border-bottom-width) / 2));
+    /* Simule l'appui */
+    border-bottom-width: calc(var(--button-border-bottom-width) / 2);
+}
+
+button:disabled,
+.btn:disabled {
+    background-color: var(--duo-gray-light);
+    color: var(--text-color-disabled);
+    border-color: var(--duo-gray-medium);
+    cursor: not-allowed;
+    opacity: 0.8;
+    transform: none;
+}
+
+/* Bouton Primaire (Défaut) */
+.btn-primary {
+    /* Style par défaut est déjà primaire */
+}
+
+/* Bouton Secondaire (Contour) */
+.btn-secondary {
+    background-color: transparent;
+    color: var(--text-on-secondary);
+    border: var(--button-border-width) solid var(--secondary-color);
+    border-bottom-width: var(--button-border-width);
+    /* Pas d'effet 3D par défaut */
+    padding-top: calc(10px + var(--button-border-bottom-width) / 2);
+    /* Compenser pour active state */
+    padding-bottom: calc(10px + var(--button-border-bottom-width) / 2);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background-color: var(--secondary-color-light-bg);
+    filter: none;
+    /* Pas de brightness */
+}
+
+.btn-secondary:active:not(:disabled) {
+    transform: translateY(1px);
+    /* Effet plus subtil */
+    background-color: var(--secondary-color-light-bg);
+}
+
+/* Bouton Danger */
+.btn-danger {
+    background-color: var(--error-color);
+    color: var(--text-on-error);
+    border-color: var(--error-color-dark);
+}
+
+/* Bouton Large */
+.btn-large {
+    padding: 14px 30px;
+    font-size: 1.1rem;
+}
+
+/* Bouton Icone */
+.btn-icon {
+    padding: 8px 10px;
+    min-width: auto;
+    text-transform: none;
+    /* Pas de majuscules */
+    border-radius: 50%;
+    /* Rond */
+    border: var(--button-border-width) solid var(--border-color);
+    background: var(--card-bg-color);
+    color: var(--text-color);
+    border-bottom-width: var(--button-border-width);
+}
+
+.btn-icon:hover:not(:disabled) {
+    background-color: var(--duo-gray-lightest);
+    border-color: var(--duo-gray-medium);
+}
+
+.btn-icon:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.btn-icon svg {
+    display: block;
+    margin: auto;
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+/* Bouton Filtre (Résultats / Review) */
+.btn-filter {
+    background: transparent;
+    color: var(--text-color-light);
+    border: 1px solid var(--border-color);
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: none;
+    border-radius: var(--border-radius-medium);
+    border-bottom-width: 1px;
+    /* Pas d'effet 3D */
+    letter-spacing: normal;
+}
+
+.btn-filter:hover:not(:disabled) {
+    background-color: var(--duo-gray-lightest);
+    border-color: var(--duo-gray-medium);
+    color: var(--text-color);
+    filter: none;
+}
+
+.btn-filter.active {
+    background-color: var(--secondary-color-light-bg);
+    color: var(--secondary-color-dark);
+    border-color: var(--secondary-color);
+    font-weight: 700;
+}
+
+.btn-filter:active:not(:disabled) {
+    transform: none;
+    /* Pas d'effet d'appui */
+}
+
+
+/* --- Forms --- */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="url"],
+input[type="search"],
+select,
+textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: var(--button-border-width) solid var(--border-color-input);
+    border-radius: var(--border-radius-medium);
+    background-color: var(--input-bg-color);
+    color: var(--text-color);
+    font-size: 1rem;
+    font-family: var(--font-family-base);
+    line-height: 1.5;
+    transition: border-color var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+    appearance: none;
+    /* Pour select */
+    outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: var(--text-color-light);
+    opacity: 1;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--border-color-input-focus);
+    box-shadow: 0 0 0 3px rgba(28, 176, 246, 0.2);
+    /* Ombre bleue légère */
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+    background-color: var(--duo-gray-lightest);
+    border-color: var(--duo-gray-light);
+    color: var(--text-color-disabled);
+    cursor: not-allowed;
+}
+
+select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23777777'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+}
+
+body[data-theme="dark"] select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23a0b0c0'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Input group (URL + Bouton) */
+.input-button-group {
+    display: flex;
+    gap: 10px;
+}
+
+.input-button-group input {
+    flex-grow: 1;
+}
+
+.input-button-group button {
+    flex-shrink: 0;
+    margin: 0;
+}
+
+
+/* --- Custom Checkbox & Radio (Duolingo Style) --- */
+/* Wrapper Label */
+.checkbox-label,
+.config-section label:has(input[type="radio"]),
+/* Label contenant un radio */
+.config-section label:has(input[type="checkbox"])
+
+/* Label contenant un checkbox */
+    {
+    display: flex;
+    /* Utiliser flex pour aligner */
+    align-items: center;
+    padding: 10px 15px;
+    /* Padding intérieur */
+    margin-bottom: 10px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-medium);
+    background-color: var(--card-bg-color);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+    position: relative;
+    /* Pour pseudo-éléments si besoin */
+}
+
+.checkbox-label:hover,
+.config-section label:has(input[type="radio"]):hover,
+.config-section label:has(input[type="checkbox"]):hover {
+    border-color: var(--duo-gray-medium);
+}
+
+/* Cacher l'input natif */
+.checkbox-label input[type="checkbox"],
+.config-section input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+/* Span contenant le texte */
+.checkbox-label span,
+.config-section label span {
+    margin-left: 12px;
+    /* Espace après le contrôle custom */
+    color: var(--text-color);
+    line-height: 1.4;
+    font-weight: 600;
+}
+
+/* Style custom pour RADIO */
+.config-section input[type="radio"]+span::before {
+    content: '';
+    display: inline-block;
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color-input);
+    background-color: var(--input-bg-color);
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+/* État checked pour RADIO */
+.config-section input[type="radio"]:checked+span::before {
+    border-color: var(--primary-color);
+    background-color: var(--primary-color);
+}
+
+/* Point intérieur pour RADIO */
+.config-section input[type="radio"]:checked+span::after {
+    content: '';
+    position: absolute;
+    left: 23px;
+    /* Ajuster position basée sur padding parent et taille ::before */
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--duo-white);
+}
+
+/* Style custom pour CHECKBOX */
+.checkbox-label span::before {
+    content: '';
+    display: inline-block;
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--border-radius-small);
+    /* Carré arrondi */
+    border: 2px solid var(--border-color-input);
+    background-color: var(--input-bg-color);
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+    text-align: center;
+    /* Pour centrer le checkmark */
+    line-height: 18px;
+    /* Ajuster pour centrer verticalement */
+}
+
+/* État checked pour CHECKBOX */
+.checkbox-label input[type="checkbox"]:checked+span::before {
+    border-color: var(--primary-color);
+    background-color: var(--primary-color);
+    color: var(--text-on-primary);
+    content: '✔';
+    /* Checkmark */
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* État disabled pour les labels custom */
+.config-section label:has(input:disabled),
+.checkbox-label:has(input:disabled) {
+    opacity: 0.6;
+    background-color: var(--duo-gray-lightest);
+    border-color: var(--duo-gray-light);
+    cursor: not-allowed;
+}
+
+.config-section label:has(input:disabled) span,
+.checkbox-label:has(input:disabled) span {
+    color: var(--text-color-disabled);
+}
+
+.config-section input:disabled+span::before,
+.checkbox-label input:disabled+span::before {
+    background-color: var(--duo-gray-light);
+    border-color: var(--duo-gray-light);
+}
+
+.config-section input[type="radio"]:checked:disabled+span::after {
+    background: var(--duo-gray-medium);
+    /* Point gris */
+}
+
+.checkbox-label input[type="checkbox"]:checked:disabled+span::before {
+    background-color: var(--duo-gray-light);
+    color: var(--duo-gray-medium);
+}
+
+/* Option indentée */
+.checkbox-label.indented-option {
+    margin-left: 25px;
+}
+
+/* Inputs dans les labels (Error count, custom number) */
+.inline-number-input {
+    width: 60px !important;
+    /* Override */
+    padding: 6px 8px !important;
+    font-size: 0.95rem !important;
+    text-align: center;
+    margin: 0 5px !important;
+    border-radius: var(--border-radius-small) !important;
+    /* Plus petit rayon */
+}
+
+.config-section label.has-extra-input {
+    padding: 5px 15px;
+    /* Ajuster padding pour ces labels */
+    align-items: baseline;
+    /* Aligner sur la ligne de base */
+}
+
+
+/* --- Cards --- */
+.card {
+    background-color: var(--card-bg-color);
+    border-radius: var(--border-radius-medium);
+    padding: 25px 30px;
+    margin-bottom: 30px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px var(--shadow-light);
+    /* Ombre très légère */
+    transition: border-color var(--transition-speed) ease, background-color var(--transition-speed) ease;
+}
+
+/* --- Messages & Notifications --- */
+.error-message,
+.success-message,
+.info-message,
+.warning-message {
+    padding: 12px 18px;
+    margin-top: 15px;
+    border-radius: var(--border-radius-medium);
+    text-align: center;
+    font-weight: 600;
+    border: 1px solid transparent;
+    /* Base border */
+    box-shadow: none;
+    /* Pas d'ombre */
+}
+
+.error-message {
+    background-color: var(--error-bg);
+    color: var(--error-color-dark);
+    border-color: var(--error-color);
+}
+
+.success-message {
+    background-color: var(--success-bg);
+    color: var(--success-color-dark);
+    border-color: var(--success-color);
+}
+
+.info-message {
+    background-color: var(--info-bg);
+    color: var(--secondary-color-dark);
+    /* Bleu foncé */
+    border-color: var(--info-color);
+}
+
+.warning-message {
+    background-color: var(--warning-bg);
+    color: var(--duo-orange-dark);
+    /* Orange foncé */
+    border-color: var(--warning-color);
+}
+
+.warning-message.small {
+    font-size: 0.9em;
+    padding: 8px 12px;
+}
+
+/* Toast Notifications */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1050;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: calc(100% - 40px);
+    max-width: 350px;
+}
+
+.toast {
+    width: 100%;
+    padding: 15px 20px;
+    border-radius: var(--border-radius-medium);
+    color: var(--duo-white);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    transform: translateX(110%);
+    /* Part de plus loin */
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    /* Effet rebond */
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.toast.error {
+    background-color: var(--error-color);
+}
+
+.toast.success {
+    background-color: var(--success-color);
+}
+
+.toast.info {
+    background-color: var(--info-color);
+}
+
+.toast.warning {
+    background-color: var(--warning-color);
+    color: var(--text-on-warning);
+}
+
+
+/* --- Badges --- */
+.badge {
+    /* Pour la liste dans les paramètres */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 10px;
+    border-radius: var(--border-radius-medium);
+    background-color: var(--duo-gray-lightest);
+    border: 1px solid var(--border-color);
+    min-width: 90px;
+    box-shadow: none;
+}
+
+body[data-theme="dark"] .badge {
+    background-color: var(--dark-card-bg);
+}
+
+.badge img {
+    width: 45px;
+    height: 45px;
+    margin-bottom: 8px;
+    object-fit: contain;
+}
+
+.badge span {
+    font-size: 0.8rem;
+    color: var(--text-color-light);
+    font-weight: 600;
+}
+
+/* Achievement Badge (Résultats) */
+.achievement-badge {
+    background-color: var(--warning-bg);
+    color: var(--duo-orange-dark);
+    /* Orange */
+    padding: 6px 14px;
+    border-radius: var(--border-radius-medium);
+    font-size: 0.9rem;
+    font-weight: 700;
+    border: 1px solid var(--duo-orange);
+    box-shadow: none;
+}
+
+/* --- Tables --- */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 0.95rem;
+}
+
+th,
+td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+th {
+    color: var(--text-color-headings);
+    font-weight: 700;
+    text-transform: uppercase;
+    /* Optionnel */
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+tr:hover {
+    background-color: var(--duo-gray-lightest);
+}
+
+body[data-theme="dark"] tr:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* --- Markdown Styles --- */
+/* Assurer la cohérence avec les styles de base */
+code {
+    background-color: var(--duo-gray-lightest);
+    padding: 2px 6px;
+    border-radius: var(--border-radius-small);
+    font-family: monospace;
+    font-size: 0.9em;
+    border: 1px solid var(--border-color);
+}
+
+pre {
+    background-color: var(--duo-gray-lightest);
+    padding: 15px;
+    border-radius: var(--border-radius-small);
+    overflow-x: auto;
+    margin: 15px 0;
+    border: 1px solid var(--border-color);
+}
+
+pre code {
+    background: none;
+    padding: 0;
+    border: none;
+}
+
+body[data-theme="dark"] code,
+body[data-theme="dark"] pre {
+    background-color: var(--dark-border);
+    /* Fond plus sombre */
+    border-color: var(--dark-border-strong);
+}
+
+strong {
+    font-weight: 800;
+}
+
+em {
+    font-style: italic;
+}
+
+ul,
+ol {
+    margin-left: 25px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}

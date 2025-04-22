@@ -1,0 +1,188 @@
+/* css/variables.css */
+:root {
+    /* Palette Inspirée de Duolingo (Ajustez si nécessaire) */
+    --duo-green: #58cc02;
+    /* Vert principal */
+    --duo-green-dark: #4aa902;
+    /* Pour hover/active/border */
+    --duo-green-light-bg: #e5f6dde3;
+    /* Fond très clair */
+
+    --duo-blue: #1cb0f6;
+    /* Bleu secondaire */
+    --duo-blue-dark: #1a9dde;
+    --duo-blue-light-bg: #e8f7fe;
+
+    --duo-red: #ff4b4b;
+    /* Erreur */
+    --duo-red-dark: #e54343;
+    --duo-red-light-bg: #ffeaea;
+
+    --duo-yellow: #ffc800;
+    /* Avertissement / Streak */
+    --duo-yellow-dark: #e5b400;
+    --duo-yellow-light-bg: #fff9e0;
+
+    --duo-orange: #ff9600;
+    /* Autre couleur accent */
+    --duo-orange-dark: #e58700;
+
+    --duo-purple: #8859ff;
+    /* Autre couleur accent */
+    --duo-purple-dark: #7a4fe5;
+
+    --duo-gray-darkest: #3c3c3c;
+    /* Texte principal foncé */
+    --duo-gray-dark: #777777;
+    /* Texte secondaire */
+    --duo-gray-medium: #afafaf;
+    /* Texte léger / Placeholder */
+    --duo-gray-light: #e5e5e5;
+    /* Bordures / Fonds désactivés */
+    --duo-gray-lightest: #f7f7f7;
+    /* Fond très léger */
+
+    --duo-white: #ffffff;
+    --duo-black: #000000;
+
+    /* Variables Sémantiques (Thème Clair par Défaut) */
+    --bg-color: var(--duo-white);
+    --card-bg-color: var(--duo-white);
+    --input-bg-color: var(--duo-white);
+    --text-color: var(--duo-gray-dark);
+    --text-color-headings: var(--duo-gray-darkest);
+    --text-color-light: var(--duo-gray-medium);
+    --text-color-disabled: var(--duo-gray-medium);
+    --text-on-primary: var(--duo-white);
+    --text-on-secondary: var(--duo-blue);
+    /* Texte sur bouton secondaire */
+    --text-on-success: var(--duo-white);
+    --text-on-error: var(--duo-white);
+    --text-on-warning: var(--duo-gray-darkest);
+    /* Texte foncé sur fond jaune */
+
+    --primary-color: var(--duo-green);
+    --primary-color-dark: var(--duo-green-dark);
+    --primary-color-light-bg: var(--duo-green-light-bg);
+
+    --secondary-color: var(--duo-blue);
+    /* Utilisé pour les boutons secondaires ? */
+    --secondary-color-dark: var(--duo-blue-dark);
+    --secondary-color-light-bg: var(--duo-blue-light-bg);
+
+    --success-color: var(--duo-green);
+    /* Vert pour succès aussi */
+    --success-color-dark: var(--duo-green-dark);
+    --success-bg: var(--duo-green-light-bg);
+
+    --error-color: var(--duo-red);
+    --error-color-dark: var(--duo-red-dark);
+    --error-bg: var(--duo-red-light-bg);
+
+    --warning-color: var(--duo-yellow);
+    --warning-bg: var(--duo-yellow-light-bg);
+
+    --info-color: var(--duo-blue);
+    --info-bg: var(--duo-blue-light-bg);
+
+    --streak-color: var(--duo-orange);
+    --score-color: var(--duo-green);
+    /* Ou un autre vert ? */
+
+    --border-color: var(--duo-gray-light);
+    --border-color-strong: var(--duo-gray-medium);
+    --border-color-input: var(--duo-gray-light);
+    --border-color-input-focus: var(--duo-blue);
+    /* Bleu au focus */
+
+    --link-color: var(--duo-blue);
+    --link-hover-color: var(--duo-blue-dark);
+
+    /* Dimensions & Transitions */
+    --base-font-size: 16px;
+    --font-family-base: 'Nunito Sans', 'Poppins', sans-serif;
+    /* Priorité à Nunito */
+    --line-height-base: 1.6;
+    --border-radius-medium: 16px;
+    /* Plus arrondi */
+    --border-radius-small: 8px;
+    --button-border-width: 2px;
+    --button-border-bottom-width: 4px;
+    /* Pour l'effet 3D */
+    --transition-speed: 0.2s;
+    --shadow-light: rgba(0, 0, 0, 0.08);
+    /* Ombre très légère */
+}
+
+/* Variables pour le Thème Sombre */
+body[data-theme="dark"] {
+    /* Couleurs spécifiques au sombre (Exemple, à ajuster) */
+    --dark-bg: #1f2d3d;
+    --dark-card-bg: #2a3b4c;
+    --dark-input-bg: #2a3b4c;
+    --dark-text: #e1e8f0;
+    --dark-text-headings: #ffffff;
+    --dark-text-light: #a0b0c0;
+    --dark-text-disabled: #708090;
+    --dark-border: #4a5c6d;
+    --dark-border-strong: #6b7c8d;
+    --dark-border-input: #4a5c6d;
+    --dark-border-input-focus: var(--duo-blue);
+    /* Garder bleu pour focus */
+
+    /* Réassignation des variables sémantiques pour le thème sombre */
+    --bg-color: var(--dark-bg);
+    --card-bg-color: var(--dark-card-bg);
+    --input-bg-color: var(--dark-input-bg);
+    --text-color: var(--dark-text);
+    --text-color-headings: var(--dark-text-headings);
+    --text-color-light: var(--dark-text-light);
+    --text-color-disabled: var(--dark-text-disabled);
+
+    /* Textes sur boutons : généralement blanc/clair même en sombre */
+    --text-on-primary: var(--duo-white);
+    --text-on-secondary: var(--duo-blue);
+    /* Garder bleu ? Ou blanc ? */
+    --text-on-success: var(--duo-white);
+    --text-on-error: var(--duo-white);
+    --text-on-warning: var(--duo-gray-darkest);
+    /* Texte foncé sur jaune reste lisible */
+
+    /* Garder les couleurs vives */
+    --primary-color: var(--duo-green);
+    --primary-color-dark: var(--duo-green-dark);
+    --primary-color-light-bg: rgba(88, 204, 2, 0.1);
+    /* Fond plus sombre */
+
+    --secondary-color: var(--duo-blue);
+    --secondary-color-dark: var(--duo-blue-dark);
+    --secondary-color-light-bg: rgba(28, 176, 246, 0.1);
+
+    --success-color: var(--duo-green);
+    --success-color-dark: var(--duo-green-dark);
+    --success-bg: rgba(88, 204, 2, 0.15);
+
+    --error-color: var(--duo-red);
+    --error-color-dark: var(--duo-red-dark);
+    --error-bg: rgba(255, 75, 75, 0.15);
+
+    --warning-color: var(--duo-yellow);
+    --warning-bg: rgba(255, 200, 0, 0.15);
+
+    --info-color: var(--duo-blue);
+    --info-bg: rgba(28, 176, 246, 0.15);
+
+    --streak-color: var(--duo-orange);
+    --score-color: var(--duo-green);
+
+    --border-color: var(--dark-border);
+    --border-color-strong: var(--dark-border-strong);
+    --border-color-input: var(--dark-border-input);
+    --border-color-input-focus: var(--dark-border-input-focus);
+
+    --link-color: var(--duo-blue);
+    --link-hover-color: var(--primary-color-light-bg);
+
+    --shadow-light: rgba(0, 0, 0, 0.2);
+    /* Ombre un peu plus marquée */
+}

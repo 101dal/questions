@@ -1,0 +1,444 @@
+/* css/responsive.css */
+
+@media (max-width: 768px) {
+
+    /* Tablet Breakpoint */
+    :root {
+        --base-font-size: 15px;
+    }
+
+    body {
+        padding: 15px;
+    }
+
+    .container {
+        width: 100%;
+        padding: 0;
+        margin-top: 20px;
+    }
+
+    h1.main-title {
+        font-size: clamp(1.8rem, 6vw, 2.4rem);
+        margin-bottom: 30px;
+    }
+
+    h2 {
+        font-size: clamp(1.4rem, 5vw, 1.7rem);
+        margin-bottom: 20px;
+    }
+
+    h3 {
+        font-size: clamp(1.1rem, 4vw, 1.3rem);
+        margin-bottom: 15px;
+    }
+
+    .card {
+        padding: 20px;
+        margin-bottom: 25px;
+    }
+
+    /* Boutons */
+    button,
+    .btn {
+        padding: 10px 18px;
+        font-size: 0.95rem;
+    }
+
+    .btn-large {
+        padding: 12px 25px;
+        font-size: 1rem;
+    }
+
+    /* Config */
+    .config-section {
+        grid-template-columns: 1fr;
+    }
+
+    /* Une colonne */
+    .config-section label {
+        width: 100%;
+    }
+
+    .config-section label.has-extra-input {
+        flex-wrap: wrap;
+    }
+
+    /* Permet retour à la ligne */
+
+    /* Quiz Header */
+    #quiz-header {
+        padding: 10px 15px;
+    }
+
+    .quiz-info {
+        gap: 8px 15px;
+        font-size: 0.9rem;
+        justify-content: space-around;
+    }
+
+    /* Quiz Content */
+    .question-block {
+        padding: 15px 20px;
+    }
+
+    .question-text {
+        font-size: clamp(1.05rem, 3.5vw, 1.2rem);
+    }
+
+    .answer-options button.answer-btn {
+        padding: 12px 18px;
+        font-size: 0.95rem;
+    }
+
+    .answer-options.qcm_multi .checkbox-label {
+        padding: 12px 18px;
+    }
+
+    /* D&D Association */
+    .answer-options.association {
+        gap: 15px;
+    }
+
+    .matching-column {
+        flex-basis: 100%;
+        min-width: unset;
+    }
+
+    /* Stacker les colonnes */
+    .matching-target-container {
+        flex-wrap: wrap;
+    }
+
+    /* Permettre retour à la ligne */
+    .matching-target-label {
+        flex-basis: 100%;
+        text-align: left;
+        margin-bottom: 5px;
+    }
+
+    .drop-target {
+        flex-basis: 100%;
+    }
+
+    /* Results */
+    .summary-metrics p {
+        font-size: 1.05rem;
+    }
+
+    .results-actions button {
+        width: calc(50% - 10px);
+        margin: 5px;
+        font-size: 0.9rem;
+        padding: 10px 15px;
+    }
+
+    .detailed-results-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .detailed-results-filters {
+        justify-content: center;
+    }
+
+    /* Settings */
+    .settings-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .settings-group label:not(.checkbox-label) {
+        min-width: unset;
+        margin-bottom: 5px;
+    }
+
+    .settings-group select {
+        width: 100%;
+        max-width: none;
+    }
+
+    .data-management-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .data-management-buttons button {
+        width: 100%;
+        margin: 5px 0;
+    }
+
+    /* Review */
+    .review-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    #review-search-input {
+        max-width: none;
+    }
+}
+
+
+@media (max-width: 480px) {
+
+    /* Phone Breakpoint */
+    :root {
+        --base-font-size: 14px;
+    }
+
+    body {
+        padding: 10px;
+        line-height: 1.55;
+    }
+
+    .container {
+        margin-top: 15px;
+    }
+
+    h1.main-title {
+        font-size: clamp(1.6rem, 7vw, 2rem);
+        margin-bottom: 25px;
+    }
+
+    h2 {
+        font-size: clamp(1.2rem, 5vw, 1.5rem);
+        margin-bottom: 18px;
+    }
+
+    h3 {
+        font-size: clamp(1.05rem, 4.5vw, 1.2rem);
+        margin-bottom: 12px;
+    }
+
+    .card {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    button,
+    .btn {
+        padding: 9px 15px;
+        font-size: 0.9rem;
+        border-radius: 12px;
+    }
+
+    .btn-large {
+        padding: 11px 22px;
+        font-size: 0.95rem;
+    }
+
+    .btn-icon {
+        padding: 6px 8px;
+    }
+
+    .btn-icon svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Dashboard */
+    .file-input-label {
+        padding: 20px;
+        font-size: 1rem;
+    }
+
+    .quiz-library-item {
+        padding: 10px 12px;
+    }
+
+    .quiz-library-item .quiz-title {
+        font-size: 0.95rem;
+    }
+
+    .quiz-library-item .quiz-source {
+        font-size: 0.75em;
+    }
+
+    .quiz-library-item .delete-quiz-btn {
+        font-size: 1.1rem;
+    }
+
+    .inline-number-input {
+        width: 50px !important;
+        padding: 4px 6px !important;
+    }
+
+    /* Quiz Header */
+    #quiz-header {
+        padding: 8px 10px;
+        margin-bottom: 15px;
+    }
+
+    #quiz-header h2 {
+        font-size: 1.2rem;
+    }
+
+    .quiz-info {
+        font-size: 0.85rem;
+        gap: 5px 10px;
+        justify-content: space-between;
+    }
+
+    #progress-bar-container {
+        height: 12px;
+        border-radius: 6px;
+    }
+
+    #progress-bar {
+        border-radius: 5px;
+    }
+
+    #question-grid-nav {
+        gap: 5px;
+        padding-top: 10px;
+        margin-top: 10px;
+    }
+
+    .grid-nav-item {
+        width: 20px;
+        height: 20px;
+        border-width: 1px;
+    }
+
+    /* Quiz Content */
+    .question-block {
+        padding: 15px;
+    }
+
+    .question-text {
+        font-size: clamp(1rem, 4vw, 1.1rem);
+        margin-bottom: 20px;
+    }
+
+    .answer-options {
+        gap: 10px;
+    }
+
+    .answer-options button.answer-btn {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        border-radius: 12px;
+    }
+
+    .answer-options.qcm_multi .checkbox-label {
+        padding: 10px 15px;
+    }
+
+    .validation-container {
+        margin-top: 20px;
+        padding-top: 15px;
+    }
+
+    .universal-validate-btn {
+        font-size: 1rem;
+        padding: 10px 25px;
+    }
+
+    .immediate-feedback {
+        padding: 10px 15px;
+        font-size: 0.95rem;
+    }
+
+    /* Results */
+    .results-actions button {
+        width: 100%;
+        margin: 4px 0;
+        font-size: 0.85rem;
+        padding: 9px 15px;
+    }
+
+    .result-item {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+
+    .result-item .question-text-result {
+        font-size: 1rem;
+    }
+
+    .result-item .user-answer,
+    .result-item .correct-answer-text {
+        font-size: 0.95rem;
+    }
+
+    .result-item .explanation {
+        font-size: 0.9rem;
+    }
+
+    /* Settings */
+    #settings-screen h2 {
+        font-size: 1.5rem;
+    }
+
+    .settings-section h3 {
+        font-size: 1.15rem;
+    }
+
+    #general-stats-local p,
+    #local-gamification p {
+        font-size: 0.95rem;
+    }
+
+    #badges-earned-local {
+        gap: 10px;
+    }
+
+    .badge {
+        min-width: 75px;
+        padding: 8px;
+    }
+
+    .badge img {
+        width: 35px;
+        height: 35px;
+    }
+
+    .badge span {
+        font-size: 0.75rem;
+    }
+
+    /* Review */
+    #review-quiz-title {
+        font-size: 1.3rem;
+    }
+
+    .review-controls {
+        gap: 8px;
+    }
+
+    #review-search-input {
+        padding: 6px 10px;
+    }
+
+    .review-card-item {
+        padding: 15px;
+        margin-bottom: 15px;
+        border-left-width: 5px;
+    }
+
+    .review-card-item .question-text-result {
+        font-size: 1rem;
+    }
+
+    .review-card-item .correct-answer-text {
+        font-size: 0.95rem;
+    }
+
+    .review-card-item .explanation {
+        font-size: 0.9rem;
+    }
+
+    /* Toasts */
+    .toast-container {
+        bottom: 10px;
+        right: 10px;
+        width: calc(100% - 20px);
+    }
+
+    .toast {
+        padding: 12px 15px;
+        font-size: 0.9rem;
+    }
+}
