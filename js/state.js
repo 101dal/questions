@@ -39,9 +39,10 @@ export const state = {
 };
 
 // --- Functions to modify state (optional, but good practice) ---
-
-export function resetQuizState() {
-    state.currentQuizConfig = {};
+export function resetQuizState(options = { preserveConfig: false }) {
+    if (!options.preserveConfig) {
+        state.currentQuizConfig = {}; // Comportement par défaut
+    } // Sinon, on ne touche pas à currentQuizConfig
     state.questionsToAsk = [];
     state.currentQuestionIndex = 0;
     state.userAnswers = [];

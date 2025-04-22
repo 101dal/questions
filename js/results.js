@@ -363,7 +363,7 @@ export function handleRestartErrors() {
     console.log(`Restarting with ${errorQuestionsFullObjects.length} error(s) from last session...`);
 
     // --- Préparer la nouvelle session d'erreurs ---
-    resetQuizState(); // Réinitialiser l'état de la progression du quiz
+    resetQuizState({ preserveConfig: true });  // Réinitialiser l'état de la progression du quiz
     state.questionsToAsk = shuffleArray(errorQuestionsFullObjects); // Utiliser les objets questions trouvés
     state.questionsToAsk.forEach((q, idx) => q.quizSessionIndex = idx); // Re-indexer
 
