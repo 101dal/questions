@@ -30,13 +30,6 @@ export function showToast(message, type = 'info', duration = 3000) {
 export function showLoader() { dom.globalLoader.classList.remove('hidden'); }
 export function hideLoader() { dom.globalLoader.classList.add('hidden'); }
 
-export function playSound(soundName) {
-    if (!state.userPreferences.soundEnabled) return;
-    // Placeholder: Implement actual audio playback here
-    console.log(`Playing sound: ${soundName}`);
-    // e.g., const audio = new Audio(`sounds/${soundName}.wav`); audio.play();
-}
-
 export function applyTheme(theme) {
     dom.bodyElement.dataset.theme = theme;
     if (settings.themeSelect) settings.themeSelect.value = theme;

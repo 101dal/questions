@@ -2,12 +2,13 @@ import * as dom from './dom.js';
 import { state, resetQuizState, setQuizActive, setActiveQuizContent, resetSelectionState } from './state.js';
 import { PRESETS, ADVANCE_DELAY, FEEDBACK_DELAY, TIME_WARNING_THRESHOLD, TIME_CRITICAL_THRESHOLD } from './config.js';
 import { saveLastConfig, loadLastConfig, loadLocalHistory, saveQuizAttempt } from './storage.js';
-import { showToast, playSound, showScreen, renderMarkdown } from './ui.js';
+import { showToast, showScreen, renderMarkdown } from './ui.js';
 import { getAnswerFormat, levenshtein, shuffleArray } from './utils.js';
 import { createQuestionBlock } from './questionRenderer.js';
 import { showResults, handleReturnItemToLeft } from './results.js'; // Import showResults and handleReturnItemToLeft
 import { recalculateLocalStats } from './stats.js'; // Import stat calculation
 import { showReviewScreen } from './review.js';
+import * as audioManager from './audioManager.js';
 
 // --- Quiz Lifecycle ---
 
@@ -175,7 +176,7 @@ export function handleTimerTick() {
         if (state.timerInterval) clearInterval(state.timerInterval);
         // Double check time is actually 0 or less before forcing finish
         if (state.timeLeft <= 0 && state.currentQuizConfig.timeLimit !== null && state.isQuizActive) {
-            playSound('error');
+            audioManager.playSound('error');
             showToast("Le temps est écoulé !", "warning", 4000);
             forceFinishQuiz(true); // Time out = true
         }
@@ -186,7 +187,7 @@ export function handleTimerTick() {
     if (state.timeLeft <= 0) {
         // This block now mainly handles the final tick to 0
         if (state.timerInterval) clearInterval(state.timerInterval);
-        playSound('error');
+        audioManager.playSound('error');
         showToast("Le temps est écoulé !", "warning", 4000);
         forceFinishQuiz(true);
     } else if (state.timeLeft <= TIME_CRITICAL_THRESHOLD) {
@@ -415,10 +416,10 @@ export function handleAnswerSelection(event) {
         // Logique de Feedback & Avancement
         if (state.currentQuizConfig.instantFeedback) {
             showImmediateFeedback(questionBlock, state.userAnswers[questionIndex].isCorrect);
-            playSound(state.userAnswers[questionIndex].isCorrect ? 'correct' : 'incorrect');
+            audioManager.playSound(state.userAnswers[questionIndex].isCorrect ? 'correct' : 'incorrect');
             setTimeout(advanceQuestion, FEEDBACK_DELAY);
         } else {
-            playSound('click'); // Son pour la validation
+            audioManager.playSound('click'); // Son pour la validation
             // Pas de feedback instantané, avancer directement
             setTimeout(advanceQuestion, ADVANCE_DELAY);
         }
@@ -429,7 +430,7 @@ export function handleAnswerSelection(event) {
         // Mettre à jour seulement l'UI de sélection
         questionBlock.querySelectorAll('.answer-options button.selected').forEach(btn => btn.classList.remove('selected'));
         clickedButton.classList.add('selected');
-        // playSound('select'); // Optionnel : son différent pour sélection
+        // audioManager.playSound('select'); // Optionnel : son différent pour sélection
         console.log("QCM option selected, UI updated for index:", questionIndex);
         // NE PAS valider ni avancer ici
 
@@ -759,7 +760,7 @@ export function advanceQuestion() {
         dom.quiz.cancelQuizBtn.classList.add('hidden');
         updateQuestionGridNav(); // Mettre à jour la grille pour montrer l'état final
         showToast("Session terminée ! Cliquez sur 'Voir les Résultats'.", "success");
-        playSound('finish');
+        audioManager.playSound('finish');
         dom.quiz.finishQuizBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 }
@@ -783,7 +784,7 @@ export function handleMarkQuestion(event) {
     button.title = state.userAnswers[index].marked ? "Ne plus marquer" : "Marquer cette question";
     button.classList.toggle('marked', state.userAnswers[index].marked);
     showToast(`Question ${index + 1} ${state.userAnswers[index].marked ? 'marquée' : 'démárquée'}.`, 'info', 1500);
-    playSound('click');
+    audioManager.playSound('click');
     // No backend call needed for local version
 }
 

@@ -1,6 +1,6 @@
 import * as dom from './dom.js';
 import { state, resetQuizState, setActiveQuizContent, setQuizActive } from './state.js';
-import { showToast, playSound, showScreen, renderMarkdown } from './ui.js';
+import { showToast, showScreen, renderMarkdown } from './ui.js';
 import { saveQuizAttempt, saveLocalHistory, loadQuizContent } from './storage.js';
 // --- Importations modifiées ---
 import { recalculateLocalStats, getBadgeInfo, checkAndAwardBadges } from './stats.js';
@@ -8,6 +8,8 @@ import { recalculateLocalStats, getBadgeInfo, checkAndAwardBadges } from './stat
 import { startQuiz, setupQuizUI, displayQuestion, updateErrorModeAvailability, resetConfigOptions } from './quizEngine.js';
 import { renderQuizLibrary, displayScoreHistory, populateHistoryFilter } from './main.js'; // Gardez les imports de main
 import { shuffleArray } from './utils.js';
+import * as audioManager from './audioManager.js';
+
 
 
 export function showResults() {
@@ -36,6 +38,10 @@ export function showResults() {
     // --- Vérifier et obtenir les badges NOUVELLEMENT gagnés dans CETTE session ---
     // Note: checkAndAwardBadges mettra aussi à jour state.localStats.badges globalement
     const newlyEarnedBadges = checkAndAwardBadges(sessionDataForBadges, 'session');
+
+    if (newlyEarnedBadges.length > 0) {
+        audioManager.playSound('badge'); // Jouer le son du badge
+    }
 
     // --- Afficher les badges NOUVELLEMENT gagnés sur l'écran de résultats ---
     displayAchievements(newlyEarnedBadges); // Passer uniquement les nouveaux
@@ -84,7 +90,7 @@ export function showResults() {
 
     // Montre l'écran (géré par main.js après l'appel)
     // showScreen('results');
-    playSound('finish');
+    audioManager.playSound('finish');
 
     // Rafraîchit l'historique sur le dashboard (appelé depuis main.js)
     // displayScoreHistory();
@@ -235,7 +241,7 @@ function handleMarkQuestionFromResult(event) {
     resultItem.classList.toggle('is-marked-result', state.userAnswers[index].marked); // Update filter class
 
     showToast(`Question ${index + 1} ${state.userAnswers[index].marked ? 'marquée' : 'démárquée'}.`, 'info', 1500);
-    playSound('click');
+    audioManager.playSound('click');
 
     // Persist this change immediately by updating the specific attempt in localHistory
     const latestAttempt = state.localHistory[state.localHistory.length - 1];

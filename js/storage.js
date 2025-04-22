@@ -35,7 +35,7 @@ function removeItem(key) {
 // --- Specific Loaders / Savers ---
 
 export function loadUserPreferences() {
-    const defaultPrefs = { theme: 'light', soundEnabled: true };
+    const defaultPrefs = { theme: 'light', soundEnabled: false };
     state.userPreferences = getItem(LOCAL_STORAGE_KEYS.PREFERENCES, defaultPrefs);
     state.userPreferences = { ...defaultPrefs, ...state.userPreferences };
 }

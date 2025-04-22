@@ -9,9 +9,10 @@ import * as results from './results.js';
 import * as review from './review.js';
 import * as settings from './settings.js';
 import * as stats from './stats.js';
+import * as audioManager from './audioManager.js';
 
 // --- Initialization ---
-function init() {
+async function init() {
     console.log("Quiz Master (Local Version) Initializing...");
     ui.showLoader(); // Show loader during init
 
@@ -22,31 +23,33 @@ function init() {
     storage.loadLocalStats();
     storage.loadLastConfig();
 
+    // --- Initialiser l'Audio Manager ---
+    // Important : L'appeler avant que les premiers sons ne soient potentiellement joués
+    // mais après le chargement des préférences (pour savoir si le son est activé).
+    await audioManager.initAudioManager();
+    // ---------------------------------
+
     // Apply initial settings
     ui.applyTheme(state.userPreferences.theme);
 
     // Import default quizzes if not present
-    importExport.importDefaultQuizzes().then(() => {
-        // Setup event listeners after potential initial imports
-        setupEventListeners();
-
-        // Create dynamic elements (like settings button)
-        createDynamicElements();
-        ui.updateSettingsButtonVisibility(); // Set initial visibility
-
-        // Show initial screen and render its content
-        showScreenAndRender('dashboard'); // Use combined function
-        ui.hideLoader(); // Hide loader after initial setup
-        console.log("Initialization Complete.");
-    }).catch(error => {
-        console.error("Error during initialization (default quiz import):", error);
-        // Still try to finish init even if default import fails
+    try {
+        await importExport.importDefaultQuizzes(); // Attendre si besoin
         setupEventListeners();
         createDynamicElements();
         ui.updateSettingsButtonVisibility();
         showScreenAndRender('dashboard');
+    } catch (error) {
+        console.error("Error during initialization:", error);
+        // Essayer de continuer même si une partie échoue
+        setupEventListeners();
+        createDynamicElements();
+        ui.updateSettingsButtonVisibility();
+        showScreenAndRender('dashboard');
+    } finally {
         ui.hideLoader();
-    });
+        console.log("Initialization Complete.");
+    }
 
 
 }

@@ -1,5 +1,7 @@
 import { state } from './state.js';
-import { renderMarkdown, playSound } from './ui.js'; // Added renderMarkdown
+import { renderMarkdown } from './ui.js'; // Added renderMarkdown
+import * as audioManager from './audioManager.js';
+
 
 // --- Ordering Handlers ---
 export function handleDragStart(event) {
@@ -157,7 +159,7 @@ export function handleAssocDrop(event) {
     sourceItemElement.classList.add('matched');
     sourceItemElement.setAttribute('draggable', 'false');
 
-    playSound('click');
+    audioManager.playSound('click');
     handleAssocDragEnd(); // Reset drag state
 }
 
@@ -186,7 +188,7 @@ export function handleReturnItemToLeft(event) {
         originalItem.setAttribute('draggable', 'true');
         leftContainer.appendChild(originalItem); // Move back visually
 
-        playSound('click');
+        audioManager.playSound('click');
     } else {
         console.warn("Could not return item: Original item or left container not found.");
     }
