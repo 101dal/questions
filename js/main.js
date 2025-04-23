@@ -40,14 +40,12 @@ async function init() {
         await importExport.importDefaultQuizzes(); // Attendre si besoin
         setupEventListeners();
         createDynamicElements();
-        ui.updateSettingsButtonVisibility();
         showScreenAndRender('dashboard');
     } catch (error) {
         console.error("Error during initialization:", error);
         // Essayer de continuer même si une partie échoue
         setupEventListeners();
         createDynamicElements();
-        ui.updateSettingsButtonVisibility();
         showScreenAndRender('dashboard');
     } finally {
         ui.hideLoader();
@@ -60,59 +58,83 @@ async function init() {
 // --- Dynamic Element Creation ---
 function createDynamicElements() {
     // Settings Button
-    const button = document.createElement('button');
-    button.id = 'dynamic-settings-btn';
-    button.innerHTML = '⚙️'; // Icon only
-    button.style.position = 'fixed';
-    button.style.bottom = '15px';
-    button.style.left = '15px';
-    button.style.zIndex = '1010';
-    button.classList.add('btn-secondary', 'btn-icon'); // Use existing styles
-    button.title = "Paramètres & Statistiques";
-    button.addEventListener('click', () => {
-        if (!state.isQuizActive) { // Prevent opening during quiz
-            showScreenAndRender('settings');
-        }
-    });
-    document.body.appendChild(button);
-    dom.dynamic.settingsButton = button; // Store reference in dom module
+    if (!document.getElementById('dynamic-settings-btn')) { // Créer seulement s'il n'existe pas
+        const button = document.createElement('button');
+        button.id = 'dynamic-settings-btn';
+        button.innerHTML = '⚙️'; // Emoji initial
+        button.title = "Paramètres & Statistiques";
+        // Les styles CSS (position: fixed, z-index, etc.) sont gérés dans le CSS
+
+        // --- ÉCOUTEUR MODIFIÉ : Basculer la classe 'visible' ---
+        button.addEventListener('click', () => {
+            const settingsScreen = dom.screens.settings; // <<< Vérifier cette référence
+            if (!settingsScreen) {
+                console.error("L'élément de l'écran des paramètres est introuvable !");
+                return;
+            }
+            const isVisible = settingsScreen.classList.contains('visible');
+
+            if (isVisible) {
+                settingsScreen.classList.remove('visible'); // <<< Retire la classe
+                settingsScreen.classList.add('hidden'); // <<< AJOUTE la classe
+                button.innerHTML = '⚙️';
+                button.title = "Ouvrir Paramètres";
+            } else {
+                settings.renderSettingsScreen(); // Re-render avant d'afficher
+                settingsScreen.classList.remove('hidden'); // <<< Retire la classe
+                settingsScreen.classList.add('visible'); // <<< AJOUTE la classe
+                button.innerHTML = '❌';
+                button.title = "Fermer Paramètres";
+            }
+        });
+        // --- FIN ÉCOUTEUR MODIFIÉ ---
+
+        document.body.appendChild(button);
+        dom.dynamic.settingsButton = button; // Garder la référence si besoin ailleurs
+    }
 }
+
 
 
 // --- Screen Switching and Rendering ---
 function showScreenAndRender(screenId) {
-    ui.showScreen(screenId); // Switch visibility first
+    // Ne plus cacher/montrer l'écran settings ici
+    Object.keys(dom.screens).forEach(id => {
+        if (id === 'settings') return; // Ignorer l'écran settings pour display:block/none
 
-    // Call specific render/setup functions based on the screen shown
+        const isActive = id === screenId;
+        dom.screens[id].classList.toggle('active', isActive);
+        // On pourrait aussi utiliser opacity/visibility pour les écrans principaux
+        // dom.screens[id].classList.toggle('hidden', !isActive);
+    });
+    // Scroll to top pour les écrans principaux
+    if (screenId !== 'settings') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        ui.showScreen(screenId);
+    }
+
+    // Appeler les fonctions de rendu spécifiques
     switch (screenId) {
         case 'dashboard':
             library.renderQuizLibrary();
-            displayScoreHistory(); // Render history table
-            library.populateHistoryFilter(); // Populate dropdown
-            quizEngine.updateErrorModeAvailability(); // Update based on selection/history
-            // Ensure config options visibility is correct based on selection state
+            displayScoreHistory();
+            library.populateHistoryFilter();
+            quizEngine.updateErrorModeAvailability();
             dom.dashboard.configOptionsDiv.classList.toggle('hidden', !state.selectedQuizId);
-            if (state.selectedQuizId) {
-                quizEngine.resetConfigOptions(true); // Prefill if quiz selected
-            }
+            if (state.selectedQuizId) quizEngine.resetConfigOptions(true);
             break;
         case 'quiz':
-            // Setup is done within startQuiz() before showing screen
+            // Pas de rendu spécifique ici, géré par startQuiz/displayQuestion
             break;
         case 'results':
-            // Rendering is done within results.showResults() before showing screen
+            // Rendu géré par results.showResults
             break;
-        case 'review': // <<< NOUVEAU CAS
-            // Le rendu est géré par review.showReviewScreen lors de l'appel initial
-            // On pourrait ajouter un rendu ici si on revient à l'écran sans relancer
-            // review.renderReviewCards(review.allQuestionsData); // Exemple si besoin de re-render
+        case 'review':
+            // Rendu géré par review.showReviewScreen
             break;
-        case 'settings':
-            settings.renderSettingsScreen();
-            break;
+        // PAS DE CAS 'settings' ICI
     }
-    // Update settings button visibility after screen change
-    ui.updateSettingsButtonVisibility();
+    // ui.updateSettingsButtonVisibility(); // <<< SUPPRIMER (bouton toujours visible)
 }
 
 // --- History Display (Moved here as it uses library state) ---
@@ -231,6 +253,20 @@ function setupEventListeners() {
         }
     });
 
+    // --- Ajouter l'écouteur pour fermer l'overlay settings en cliquant sur le fond ---
+    const settingsOverlayBg = document.querySelector('#settings-screen .settings-overlay-background');
+    if (settingsOverlayBg) {
+        settingsOverlayBg.addEventListener('click', () => {
+            dom.screens.settings.classList.remove('visible');
+            dom.screens.settings.classList.add('hidden');
+            // Remettre l'icône du bouton à "fermée"
+            if (dom.dynamic.settingsButton) {
+                dom.dynamic.settingsButton.innerHTML = '⚙️';
+                dom.dynamic.settingsButton.title = "Ouvrir Paramètres";
+            }
+        });
+    }
+
     // Results Screen
     dom.results.restartQuizBtn.addEventListener('click', () => {
         results.handleRestartQuiz();
@@ -274,6 +310,22 @@ function handleClearHistory() {
 }
 
 function handleGlobalKeyDown(event) {
+    // --- Gérer Echap pour fermer Settings ---
+    if (event.key === 'Escape') {
+        const settingsScreen = dom.screens.settings;
+        if (settingsScreen.classList.contains('visible')) {
+            event.preventDefault(); // Empêche d'autres actions Echap par défaut
+            settingsScreen.classList.remove('visible');
+            // Remettre l'icône du bouton à "fermée"
+            if (dom.dynamic.settingsButton) {
+                dom.dynamic.settingsButton.innerHTML = '⚙️';
+                dom.dynamic.settingsButton.title = "Ouvrir Paramètres";
+            }
+            console.log("Settings overlay closed via Escape key.");
+            return; // Arrêter le traitement si on a fermé les settings
+        }
+    }
+    // --- Fin gestion Echap ---
     // Ne rien faire si le quiz n'est pas actif ou si l'écran n'est pas le quiz
     if (!state.isQuizActive || !dom.screens.quiz.classList.contains('active')) {
         return;

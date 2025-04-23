@@ -1,6 +1,6 @@
 import * as dom from './dom.js';
 import { state } from './state.js';
-import { applyTheme, showScreen } from './ui.js';
+import { applyTheme } from './ui.js';
 import { saveUserPreferences } from './storage.js';
 import { handleExportData, handleImportData } from './importExport.js';
 import { renderGlobalStats, renderQuizStats, renderGamificationStats } from './stats.js';
@@ -11,7 +11,6 @@ export function setupSettingsScreen() {
     dom.settings.soundEffectsToggle.addEventListener('change', handleSoundToggle);
     dom.settings.exportDataBtn.addEventListener('click', handleExportData);
     dom.settings.importDataBtn.addEventListener('click', handleImportData);
-    dom.settings.backToDashboardBtn.addEventListener('click', () => showScreen('dashboard'));
 }
 
 export function renderSettingsScreen() {

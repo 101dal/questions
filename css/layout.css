@@ -515,9 +515,12 @@ body[data-theme="dark"] .answer-options button.answer-btn.selected:disabled {
 /* Style pour un bouton QCM/VF SÉLECTIONNÉ (avant validation) */
 .answer-options button.answer-btn.option-selected-ui {
     /* Appliquer un style distinctif mais différent de la validation */
-    border-color: var(--secondary-color-dark); /* Bordure bleue plus foncée */
-    background-color: var(--secondary-color-light-bg); /* Fond bleu très clair */
-    color: var(--secondary-color-dark); /* Texte bleu foncé */
+    border-color: var(--secondary-color-dark);
+    /* Bordure bleue plus foncée */
+    background-color: var(--secondary-color-light-bg);
+    /* Fond bleu très clair */
+    color: var(--secondary-color-dark);
+    /* Texte bleu foncé */
     /* Optionnel: légère ombre intérieure pour effet "pressé" léger */
     /* box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); */
 }
@@ -529,6 +532,7 @@ body[data-theme="dark"] .answer-options button.answer-btn.selected:disabled {
     color: var(--text-color-disabled);
     /* Pas de style option-selected-ui sur les désactivés validés */
 }
+
 body[data-theme="dark"] .answer-options button.answer-btn.selected:disabled {
     background-color: rgba(74, 92, 109, 0.5);
     border-color: var(--dark-border);
@@ -1157,3 +1161,239 @@ body[data-theme="dark"] .answer-options button.answer-btn.selected:disabled {
 }
 
 /* Bouton primaire */
+
+/* css/layout.css ou nouveau fichier */
+
+/* --- Settings Screen as Overlay --- */
+
+#settings-screen {
+    position: fixed;
+    /* Se positionne par rapport au viewport */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* background-color: rgba(0, 0, 0, 0.5); /* Fond semi-transparent optionnel */
+    z-index: 1200;
+    /* Au-dessus de tout, même des toasts? */
+    display: flex;
+    /* Utiliser flex pour centrer le contenu */
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    /* Espacement des bords */
+
+    /* Gestion de la visibilité par défaut */
+    opacity: 0;
+    visibility: hidden;
+    /* --- Transition UNIQUEMENT pour l'apparition --- */
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s, transform 0.3s ease;
+    /* Garder transform pour l'apparition */
+    transform: translateY(-20px);
+    /* État caché initial */
+}
+
+/* Classe pour afficher l'overlay */
+#settings-screen.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    /* État visible */
+    /* --- Appliquer transition ici aussi pour l'ouverture --- */
+    transition: opacity 0.3s ease, visibility 0s linear 0s, transform 0.3s ease;
+}
+
+
+/* Style pour le contenu réel de la modale/panneau */
+/* Utilise la classe ajoutée dans le HTML */
+.settings-modal-content {
+    background-color: var(--card-bg-color);
+    border-radius: var(--border-radius-medium);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+    max-width: 800px;
+    /* <<< AUGMENTER CETTE VALEUR (ex: 800px ou 90%) */
+    width: 90%;
+    /* Garder une largeur relative pour flexibilité */
+    max-height: 90vh;
+    /* <<< AUGMENTER HAUTEUR MAX (ex: 90vh) */
+    /* Limiter la hauteur */
+    overflow-y: auto;
+    /* Scroll si nécessaire */
+    padding: 25px 30px;
+    position: relative;
+    /* Pour positionner des éléments internes si besoin */
+    transform: translateY(-20px);
+    /* Effet d'apparition */
+    transition: transform 0.3s ease;
+    /* Retirer la marge du .card par défaut si elle interfère */
+    margin-bottom: 0;
+}
+
+#settings-screen.visible .settings-modal-content {
+    transform: translateY(0);
+}
+
+
+/* Fond cliquable pour fermer (optionnel) */
+.settings-overlay-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* background: transparent; */
+    /* Ou un fond très léger */
+    z-index: -1;
+    /* Derrière le contenu, mais dans l'overlay */
+}
+
+
+/* Ajustements internes si nécessaire */
+.settings-modal-content h2 {
+    text-align: center;
+    margin-top: 5px;
+    /* Moins de marge en haut */
+    margin-bottom: 30px;
+    font-size: 1.7rem;
+    border-bottom: none;
+    /* Pas besoin de bordure titre */
+    padding-bottom: 0;
+}
+
+/* --- Style pour le bouton Paramètres flottant --- */
+/* Assurez-vous que ce bouton a un z-index inférieur à l'overlay */
+#dynamic-settings-btn {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    /* --- Z-INDEX AUGMENTÉ --- */
+    z-index: 1210;
+    /* Supérieur à l'overlay (1200) */
+    /* --- Taille et centrage --- */
+    width: 50px;
+    height: 50px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 1.8rem;
+    /* --- Utiliser flex pour un meilleur centrage des emojis --- */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* --- Fin flex --- */
+    text-align: center;
+    /* Fallback */
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+    border: var(--button-border-width) solid var(--border-color);
+    background: var(--card-bg-color);
+    color: var(--text-color);
+    border-bottom-width: var(--button-border-width);
+    cursor: pointer;
+    /* Ajouter explicitement */
+    transition: background-color var(--transition-speed) ease, border-color var(--transition-speed) ease, transform var(--transition-speed) ease;
+    /* Ajouter transform */
+}
+
+#dynamic-settings-btn:hover:not(:disabled) {
+    background-color: var(--duo-gray-lightest);
+    border-color: var(--duo-gray-medium);
+}
+
+#dynamic-settings-btn:active:not(:disabled) {
+    transform: translateY(1px) scale(0.95);
+    /* Ajouter petit scale */
+}
+
+/* Ajuster le positionnement si besoin sur petits écrans */
+@media (max-width: 480px) {
+    #dynamic-settings-btn {
+        bottom: 15px;
+        left: 15px;
+        width: 45px;
+        height: 45px;
+        font-size: 1.6rem;
+    }
+
+    .settings-modal-content {
+        max-height: 95vh;
+        /* Presque toute la hauteur sur très petit écran */
+        padding: 15px;
+    }
+
+    .settings-modal-content h2 {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+    }
+}
+
+/* css/layout.css */
+
+.settings-modal-content {
+    /* ... (styles existants) ... */
+    overflow-y: auto;
+    /* --- Ajout pour compenser la scrollbar --- */
+    /* Donne un peu d'espace à droite pour la scrollbar sans toucher le bord */
+    /* Cela dépend du navigateur et de l'OS, pas toujours parfait */
+    scrollbar-gutter: stable;
+    /* Standard récent, bonne solution */
+    padding-right: calc(30px - 8px);
+    /* Ajuster le padding droit si scrollbar-gutter n'est pas supporté partout
+                                         (30px = padding gauche, 8px = largeur approx scrollbar) */
+    /* OU (alternative moins précise) */
+    /* padding-right: 22px; */
+    /* Valeur fixe ajustée */
+
+
+    /* --- Styles pour personnaliser la scrollbar (WebKit/Blink) --- */
+    &::-webkit-scrollbar {
+        width: 8px;
+        /* Largeur de la scrollbar */
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+        /* Cache la piste */
+        /* background: var(--duo-gray-lightest); */
+        /* Ou couleur légère */
+        border-radius: 10px;
+        /* Arrondir la piste */
+        margin: 5px 0;
+        /* Marge verticale */
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background-color: var(--duo-gray-medium);
+        /* Couleur du curseur */
+        border-radius: 10px;
+        /* Arrondir le curseur */
+        border: 2px solid transparent;
+        /* Espace autour du curseur (optionnel) */
+        background-clip: content-box;
+        /* Pour que la bordure soit un espace */
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background-color: var(--duo-gray-dark);
+        /* Curseur au survol */
+    }
+
+    /* --- Fin styles scrollbar --- */
+}
+
+/* Rétablir le padding droit normal si scrollbar-gutter est supporté */
+@supports (scrollbar-gutter: stable) {
+    .settings-modal-content {
+        padding-right: 30px;
+        /* Revenir au padding normal */
+    }
+}
+
+body[data-theme="dark"] .settings-modal-content {
+    &::-webkit-scrollbar-thumb {
+        background-color: var(--dark-border-strong);
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background-color: var(--dark-text-light);
+    }
+}
