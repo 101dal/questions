@@ -339,38 +339,33 @@ function handleGlobalKeyDown(event) {
     // Utile principalement si navigation autorisée ET feedback OFF (où il n'y a pas d'avance auto)
     // Ou si on veut forcer la navigation même avec feedback ON (peut être déroutant?)
     // Condition: Autoriser la navigation OU être en mode feedback instantané (où on peut vouloir naviguer après)
-    const canNavigate = state.currentQuizConfig.allowNavBack || state.currentQuizConfig.instantFeedback;
-
-    if (canNavigate && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
         event.preventDefault();
         const direction = (event.key === 'ArrowRight') ? 1 : -1;
         const targetIndex = state.currentQuestionIndex + direction;
 
         // Vérifier si la cible est valide
         if (targetIndex >= 0 && targetIndex < state.questionsToAsk.length) {
-            // Si navigation arrière autorisée, on peut aller n'importe où
-            // Si seulement feedback instantané, on ne peut aller que vers l'avant (sauf si allowNavBack aussi)
-            if (state.currentQuizConfig.allowNavBack || direction === 1) {
+            // Naviguer visuellement est toujours permis
+            console.log(`Arrow key '${event.key}' pressed, displaying index:`, targetIndex);
+            quizEngine.displayQuestion(targetIndex); // Affiche la question cible
+            // La logique dans displayQuestion gérera l'activation/désactivation des inputs
+            // en fonction de allowNavBack et si la question a déjà été répondue.
 
-                // Peut-on naviguer vers une question non encore répondue ? (Décision UX)
-                // Pour l'instant : Oui, on permet. Si on voulait bloquer :
-                // if (state.userAnswers[targetIndex] !== null || direction === -1) { // Permet retour vers répondu, avance vers n'importe quoi
-                // }
-
-                console.log(`Arrow key '${event.key}' pressed, navigating to index:`, targetIndex);
-                quizEngine.displayQuestion(targetIndex); // Affiche la question cible
-
-            } else {
-                console.log("Arrow key navigation blocked (trying to go back without allowNavBack).");
-            }
         } else {
             console.log("Arrow key navigation blocked (reached beginning/end).");
-            // Optionnel: aller aux résultats si flèche droite sur la dernière question ?
+
             if (event.key === 'ArrowRight' && state.currentQuestionIndex === state.questionsToAsk.length - 1) {
+                // Vérifier si toutes les questions ont une réponse (ne sont pas null)
+                const allAnswered = state.userAnswers.every(answer => answer !== null && answer.answer !== null); // Vérifie si une réponse a été enregistrée
                 const finishButton = dom.quiz.finishQuizBtn;
-                if (!finishButton.classList.contains('hidden')) {
-                    console.log("ArrowRight on last question, clicking Finish button.");
+
+                if (allAnswered && !finishButton.classList.contains('hidden')) {
+                    console.log("ArrowRight on last question AND all answered, clicking Finish button.");
                     finishButton.click();
+                } else if (!allAnswered) {
+                    console.log("ArrowRight on last question, but not all questions answered yet.");
+                    ui.showToast("Veuillez répondre à toutes les questions avant de terminer.", "warning");
                 }
             }
         }
@@ -380,31 +375,31 @@ function handleGlobalKeyDown(event) {
     // --- RACCOURCIS SÉLECTION QCM/VRAI_FAUX (Touches 1, 2, 3...) ---
     if (/^[1-9]$/.test(event.key)) {
         event.preventDefault();
-        const choiceIndex = parseInt(event.key, 10) - 1; // Touche '1' -> index 0
+        const choiceIndex = parseInt(event.key, 10) - 1;
 
         const currentQuestionBlock = dom.quiz.contentArea.querySelector(`.question-block[data-index="${state.currentQuestionIndex}"]`);
         if (currentQuestionBlock) {
-            const questionType = state.questionsToAsk[state.currentQuestionIndex]?.type;
+            // Ou si allowNavBack est activé (car l'utilisateur peut vouloir changer)
+            const currentAnswerEntry = state.userAnswers[state.currentQuestionIndex];
+            if (currentAnswerEntry && currentAnswerEntry.answer === null || state.currentQuizConfig.allowNavBack) {
+                const questionType = state.questionsToAsk[state.currentQuestionIndex]?.type;
 
-            if (questionType === 'qcm' || questionType === 'vrai_faux') {
-                const optionsButtons = currentQuestionBlock.querySelectorAll('.answer-options button.answer-btn');
-                if (choiceIndex < optionsButtons.length) {
-                    console.log(`Number key '${event.key}' pressed, selecting QCM option index:`, choiceIndex);
-                    // Simuler le clic sur le bouton d'option (mettra à jour l'UI via handleAnswerSelection)
-                    optionsButtons[choiceIndex].click();
+                if (questionType === 'qcm' || questionType === 'vrai_faux') {
+                    const optionsButtons = currentQuestionBlock.querySelectorAll('.answer-options button.answer-btn');
+                    if (choiceIndex < optionsButtons.length && !optionsButtons[choiceIndex].disabled) { // Vérifier si option non désactivée
+                        console.log(`Number key '${event.key}' pressed, selecting QCM option index:`, choiceIndex);
+                        optionsButtons[choiceIndex].click(); // Déclenche handleAnswerSelection pour la sélection UI
+                    }
+                } else if (questionType === 'qcm_multi') {
+                    const optionsCheckboxes = currentQuestionBlock.querySelectorAll('.answer-options input[type="checkbox"]');
+                    if (choiceIndex < optionsCheckboxes.length && !optionsCheckboxes[choiceIndex].disabled) { // Vérifier si option non désactivée
+                        console.log(`Number key '${event.key}' pressed, toggling QCM-Multi option index:`, choiceIndex);
+                        const targetCheckbox = optionsCheckboxes[choiceIndex];
+                        targetCheckbox.checked = !targetCheckbox.checked;
+                    }
                 }
-            } else if (questionType === 'qcm_multi') {
-                const optionsCheckboxes = currentQuestionBlock.querySelectorAll('.answer-options input[type="checkbox"]');
-                if (choiceIndex < optionsCheckboxes.length) {
-                    console.log(`Number key '${event.key}' pressed, toggling QCM-Multi option index:`, choiceIndex);
-                    // Inverser l'état de la checkbox et déclencher l'événement 'change' si nécessaire
-                    // (Le clic sur le label pourrait être plus simple à simuler)
-                    const targetCheckbox = optionsCheckboxes[choiceIndex];
-                    targetCheckbox.checked = !targetCheckbox.checked; // Inverser l'état
-                    // Simuler un clic sur le label parent pour que handleAnswerSelection (si modifié pour écouter label) puisse réagir
-                    // targetCheckbox.closest('label')?.click(); // Moins fiable
-                    // Ou simplement laisser l'état changer, handleAnswerSelection le lira lors de la validation
-                }
+            } else {
+                console.log(`Number key '${event.key}' ignored: Question already answered or nav back disabled.`);
             }
         }
         return; // Sélection traitée
