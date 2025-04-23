@@ -284,7 +284,6 @@ export function displayQuestion(index) {
 
     // --- CONDITION IMPORTANTE ---
     // Gérer l'état des inputs (activé/désactivé/restauré) UNIQUEMENT ici.
-    // NE PAS appeler processAnswer ou advanceQuestion ici.
 
     if (state.userAnswers[index].answer !== null) { // Si la question a DEJA une réponse enregistrée
         if (state.currentQuizConfig.allowNavBack) {
@@ -623,72 +622,127 @@ export function processAnswer(questionIndex, userAnswer) {
     }
 
     const correctAnswer = question.correctAnswer;
-    const pointsPossible = question.points ?? 10; // Default points
-    let isCorrect = false;
+    const pointsPossible = question.points ?? 10; // Points max pour cette question
+    let isCorrect = false; // Sera true seulement si la correspondance est parfaite
+    let pointsEarned = 0; // Initialiser les points gagnés
     const timeTaken = (Date.now() - state.questionStartTime) / 1000;
 
     // --- Check Correctness ---
     try {
         switch (question.type) {
-            case 'vrai_faux': isCorrect = (userAnswer === correctAnswer); break;
-            case 'qcm': isCorrect = String(userAnswer).toLowerCase() === String(correctAnswer).toLowerCase(); break;
+            case 'vrai_faux':
+                isCorrect = (userAnswer === correctAnswer);
+                pointsEarned = isCorrect ? pointsPossible : 0;
+                break;
+            case 'qcm':
+                isCorrect = String(userAnswer).toLowerCase() === String(correctAnswer).toLowerCase();
+                pointsEarned = isCorrect ? pointsPossible : 0;
+                break;
             case 'texte_libre':
-                const s1 = String(userAnswer);
-                const s2 = String(correctAnswer);
+                const s1 = String(userAnswer).trim().toLowerCase();
+                const s2 = String(correctAnswer).trim().toLowerCase();
                 const error = levenshtein(s1, s2) / s2.length; // Calculate the error so that mis-type can occur correctly
                 console.log(error, error <= 0.15);
                 isCorrect = (error <= 0.15); // Lower than 15% means correct answer
+                pointsEarned = isCorrect ? pointsPossible : 0;
                 break;
-            // isCorrect = String(userAnswer).trim().toLowerCase() === String(correctAnswer).trim().toLowerCase(); break;
+
             case 'qcm_multi':
-                const correctSorted = [...(Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer])].sort();
-                // userAnswer is already sorted from handleAnswerSelection
-                isCorrect = JSON.stringify(userAnswer) === JSON.stringify(correctSorted);
-                break;
+                // Assurer que correctAnswer et userAnswer sont des tableaux triés de strings
+                const correctAnswersSet = new Set(Array.isArray(correctAnswer) ? correctAnswer.map(String) : [String(correctAnswer)]);
+                const userAnswersSet = new Set(Array.isArray(userAnswer) ? userAnswer.map(String) : [String(userAnswer)]); // userAnswer vient déjà trié et en string de handleAnswerSelection
+
+                // --- Calcul du Score Partiel ---
+                let correctSelectedCount = 0;
+                let incorrectSelectedCount = 0;
+                const totalCorrectOptions = correctAnswersSet.size;
+                // Pourrait aussi calculer le nombre total d'options affichées si on veut baser la pénalité là-dessus
+                // const totalDisplayedOptions = questionBlock.querySelectorAll('.answer-options input[type="checkbox"]').length;
+
+                // Compter les bonnes et mauvaises sélections de l'utilisateur
+                userAnswersSet.forEach(ans => {
+                    if (correctAnswersSet.has(ans)) {
+                        correctSelectedCount++;
+                    } else {
+                        incorrectSelectedCount++;
+                    }
+                });
+
+                // Vérifier si la réponse est parfaitement correcte
+                isCorrect = (correctSelectedCount === totalCorrectOptions) && (incorrectSelectedCount === 0);
+
+                // Calculer les points gagnés
+                if (totalCorrectOptions > 0) {
+                    const pointsPerCorrect = pointsPossible / totalCorrectOptions;
+                    // Option 1: Pénalité égale aux points gagnés par bonne réponse
+                    const penaltyPerIncorrect = pointsPerCorrect;
+                    // Option 2: Pénalité basée sur le nombre de distracteurs (plus complexe si options générées dynamiquement)
+                    // const totalDistractors = totalDisplayedOptions - totalCorrectOptions;
+                    // const penaltyPerIncorrect = totalDistractors > 0 ? pointsPossible / totalDistractors : 0;
+
+                    const scoreBeforePenalty = correctSelectedCount * pointsPerCorrect;
+                    const totalPenalty = incorrectSelectedCount * penaltyPerIncorrect;
+
+                    pointsEarned = Math.max(0, scoreBeforePenalty - totalPenalty); // Score ne peut pas être négatif
+                    pointsEarned = Math.round(pointsEarned); // Arrondir au point entier le plus proche
+
+                    // Si la réponse est parfaite, s'assurer qu'on donne tous les points (évite erreurs d'arrondi)
+                    if (isCorrect) {
+                        pointsEarned = pointsPossible;
+                    }
+
+                } else {
+                    // Cas étrange où il n'y a pas de bonne réponse définie ? Score = 0
+                    pointsEarned = 0;
+                    isCorrect = (userAnswersSet.size === 0); // Correct si on n'a rien coché
+                }
+                console.log(`QCM-Multi Score: Correct=${correctSelectedCount}/${totalCorrectOptions}, Incorrect=${incorrectSelectedCount}, Points=${pointsEarned}/${pointsPossible}`);
+                // --- Fin Calcul Score Partiel ---
+                break; // Fin du case qcm_multi
+
             case 'ordre':
                 const correctOrder = Array.isArray(correctAnswer) ? correctAnswer : [];
                 const userOrder = Array.isArray(userAnswer) ? userAnswer : [];
-                // Simple string comparison after getting text content in handleAnswerSelection
-                isCorrect = userOrder.join('|') === correctOrder.join('|'); // Compare ordered strings
+                isCorrect = userOrder.join('|') === correctOrder.join('|');
+                pointsEarned = isCorrect ? pointsPossible : 0;
                 break;
             case 'association':
-                // userAnswer is { targetId: itemId }
                 const correctMap = typeof correctAnswer === 'object' && correctAnswer !== null ? correctAnswer : {};
                 const userMap = typeof userAnswer === 'object' && userAnswer !== null ? userAnswer : {};
                 let allMatch = true;
-                // Check if user map has same size as correct map AND all pairs match
                 if (Object.keys(userMap).length !== Object.keys(correctMap).length) {
                     allMatch = false;
                 } else {
-                    for (const leftItemKey in correctMap) { // Iterate through correct keys (left items)
-                        const correctTarget = correctMap[leftItemKey]; // Expected right item
+                    for (const leftItemKey in correctMap) {
+                        const correctTarget = correctMap[leftItemKey];
                         let userMappedLeftItem = null;
-                        // Find which left item the user mapped TO this correct target
                         for (const targetKey in userMap) {
                             if (targetKey === correctTarget) {
                                 userMappedLeftItem = userMap[targetKey];
                                 break;
                             }
                         }
-                        // Check if the left item the user put in the correct target's spot matches the key
                         if (userMappedLeftItem !== leftItemKey) {
                             allMatch = false;
                             break;
                         }
                     }
                 }
-                // Ensure all required items (items_left) were attempted to be mapped
-                // This check might be redundant if the first check passes, but safer
                 if (question.items_left && Object.keys(userMap).length !== question.items_left.length) {
                     allMatch = false;
                 }
                 isCorrect = allMatch;
+                pointsEarned = isCorrect ? pointsPossible : 0;
                 break;
-            default: isCorrect = false;
+            default:
+                isCorrect = false;
+                pointsEarned = 0;
         }
-    } catch (e) { console.error("Error checking answer:", e); isCorrect = false; }
-
-    const pointsEarned = isCorrect ? pointsPossible : 0;
+    } catch (e) {
+        console.error("Error checking answer:", e);
+        isCorrect = false;
+        pointsEarned = 0;
+    }
 
     // Update the specific answer entry (now we know it exists with the right ID)
     state.userAnswers[questionIndex] = {
