@@ -333,8 +333,6 @@ export function handleAnswerSelection(event) {
     const targetElement = event.target;
     const questionBlock = targetElement.closest('.question-block');
     if (!questionBlock || !state.isQuizActive || state.isSubmittingAnswer) {
-        // Ne rien faire si le quiz n'est pas actif, si on est déjà en train de soumettre,
-        // ou si le clic est en dehors d'un bloc question.
         if (state.isSubmittingAnswer) console.log("handleAnswerSelection blocked: already submitting");
         return;
     }
@@ -352,15 +350,19 @@ export function handleAnswerSelection(event) {
         switch (question.type) {
             case 'qcm':
             case 'vrai_faux':
-                const selectedButton = questionBlock.querySelector('.answer-options button.selected');
+                // Trouver le bouton avec la classe .option-selected-ui (la sélection visuelle)
+                const selectedButton = questionBlock.querySelector('.answer-options button.answer-btn.option-selected-ui'); // <<< MODIFIÉ ICI
                 if (!selectedButton) {
                     showToast("Veuillez sélectionner une réponse.", "warning");
                     isValidInput = false;
                 } else {
                     const answerString = selectedButton.dataset.answer;
                     userAnswer = (answerString === 'true') ? true : (answerString === 'false' ? false : answerString);
+                    // Optionnel: Marquer ce bouton comme 'selected' pour le style désactivé final
+                    selectedButton.classList.add('selected');
                 }
                 break;
+            // ... (reste des cas : texte_libre, qcm_multi, association, ordre) ...
             case 'texte_libre':
                 const inputElement = questionBlock.querySelector('.answer-options input[type="text"]');
                 userAnswer = inputElement.value.trim();
@@ -393,25 +395,24 @@ export function handleAnswerSelection(event) {
                 break;
             case 'ordre':
                 const itemsContainer = questionBlock.querySelector('.ordering-items-container');
-                if (!itemsContainer) { isValidInput = false; break; } // Sécurité
+                if (!itemsContainer) { isValidInput = false; break; }
                 userAnswer = Array.from(itemsContainer.querySelectorAll('.ordering-item')).map(item => item.textContent.trim());
-                // Valider si l'ordre a changé de l'initial? Optionnel. Pour l'instant on valide toujours.
                 break;
             default:
                 console.error("Unknown question type during validation:", question.type);
-                isValidInput = false; // Ne pas traiter un type inconnu
+                isValidInput = false;
                 break;
         }
 
-        // Si l'input est invalide, arrêter ici (après avoir montré le toast)
+
         if (!isValidInput) {
             return;
         }
 
         // --- Input Valide -> Verrouiller et Traiter ---
         state.isSubmittingAnswer = true;
-        disableQuestionBlockInputs(questionBlock); // Désactiver TOUT, y compris le bouton Valider
-        processAnswer(questionIndex, userAnswer); // Évaluer la réponse
+        disableQuestionBlockInputs(questionBlock);
+        processAnswer(questionIndex, userAnswer);
 
         // Logique de Feedback & Avancement
         if (state.currentQuizConfig.instantFeedback) {
@@ -419,31 +420,35 @@ export function handleAnswerSelection(event) {
             audioManager.playSound(state.userAnswers[questionIndex].isCorrect ? 'correct' : 'incorrect');
             setTimeout(advanceQuestion, FEEDBACK_DELAY);
         } else {
-            audioManager.playSound('click'); // Son pour la validation
-            // Pas de feedback instantané, avancer directement
+            audioManager.playSound('click'); // Son pour validation
             setTimeout(advanceQuestion, ADVANCE_DELAY);
         }
 
-        // --- CAS 2 : Clic sur une option de réponse (PAS le bouton Valider) ---
-    } else if (targetElement.closest('.answer-btn')) { // Clic sur un bouton QCM / V/F
+        // --- CAS 2 : Clic sur une option de réponse QCM/VF (PAS le bouton Valider) ---
+    } else if (targetElement.closest('.answer-btn')) {
         const clickedButton = targetElement.closest('.answer-btn');
-        // Mettre à jour seulement l'UI de sélection
-        questionBlock.querySelectorAll('.answer-options button.selected').forEach(btn => btn.classList.remove('selected'));
-        clickedButton.classList.add('selected');
-        // audioManager.playSound('select'); // Optionnel : son différent pour sélection
+
+        // --- Logique de sélection UI ---
+        // 1. Enlever la classe de tous les autres boutons de ce bloc
+        questionBlock.querySelectorAll('.answer-options button.answer-btn.option-selected-ui')
+            .forEach(btn => btn.classList.remove('option-selected-ui'));
+        // 2. Ajouter la classe au bouton cliqué
+        clickedButton.classList.add('option-selected-ui');
+        // 3. Jouer un son de sélection (optionnel)
+        audioManager.playSound('select', 0.8); // Son plus léger pour sélection
+        // -----------------------------
+
         console.log("QCM option selected, UI updated for index:", questionIndex);
         // NE PAS valider ni avancer ici
 
-    } else if (targetElement.closest('.checkbox-label') || targetElement.matches('input[type="checkbox"]')) { // Clic sur un label ou checkbox QCM-Multi
-        // L'état de la checkbox est géré nativement par le navigateur.
-        // On pourrait ajouter un feedback visuel si besoin, mais ce n'est généralement pas nécessaire.
+    } else if (targetElement.closest('.checkbox-label') || targetElement.matches('input[type="checkbox"]')) {
+        // Pas de changement de style spécifique nécessaire ici, le navigateur gère la coche.
+        // On pourrait jouer un son si on veut.
+        // audioManager.playSound('select', 0.7);
         console.log("QCM-Multi checkbox toggled for index:", questionIndex);
         // NE PAS valider ni avancer ici
-
-    } else {
-        // Clic ailleurs dans le bloc (texte, espace vide, etc.) - ne rien faire
-        // console.log("Clicked elsewhere in block, no action taken.");
     }
+    // else { // Clic ailleurs, ne rien faire }
 }
 
 export function disableQuestionBlockInputs(questionBlock) {
@@ -484,13 +489,22 @@ export function enableQuestionBlockInputs(questionBlock) {
 export function restoreAnswerSelectionUI(questionBlock, answer, type) {
     if (answer === null || answer === undefined) return;
 
+    // --- Supprimer toute sélection UI précédente avant de restaurer ---
+    questionBlock.querySelectorAll('.answer-options button.option-selected-ui')
+        .forEach(btn => btn.classList.remove('option-selected-ui'));
+    // -----------------------------------------------------------------
+
     switch (type) {
         case 'qcm':
         case 'vrai_faux':
-            questionBlock.querySelectorAll('.answer-options button').forEach(btn => btn.classList.remove('selected'));
+            // Trouver le bouton correspondant à la réponse enregistrée
             const btnToSelect = questionBlock.querySelector(`.answer-options button[data-answer="${answer}"]`);
-            if (btnToSelect) btnToSelect.classList.add('selected');
+            if (btnToSelect) {
+                // Ajouter SEULEMENT la classe de sélection UI, pas la classe 'selected' finale
+                btnToSelect.classList.add('option-selected-ui');
+            }
             break;
+        // ... (reste des cas inchangés: texte_libre, qcm_multi, ordre, association) ...
         case 'texte_libre':
             const inputEl = questionBlock.querySelector('.answer-options input[type="text"]');
             if (inputEl) inputEl.value = answer;
@@ -505,13 +519,11 @@ export function restoreAnswerSelectionUI(questionBlock, answer, type) {
             const currentItems = Array.from(questionBlock.querySelectorAll('.ordering-items-container .ordering-item'));
             const container = questionBlock.querySelector('.ordering-items-container');
             if (!container || !Array.isArray(answer)) break;
-            container.innerHTML = ''; // Clear container
-            // Re-append items in the saved order
+            container.innerHTML = '';
             answer.forEach(itemText => {
-                // Find the original DOM element based on text content (fragile if duplicates exist)
                 const item = currentItems.find(el => el.textContent.trim() === itemText);
                 if (item) container.appendChild(item);
-                else console.warn("Could not find ordering item element for:", itemText); // Handle missing item case
+                else console.warn("Could not find ordering item element for:", itemText);
             });
             break;
         case 'association':
@@ -519,7 +531,6 @@ export function restoreAnswerSelectionUI(questionBlock, answer, type) {
             const allLeftItems = Array.from(leftContainer?.querySelectorAll('.matching-item') || []);
             const allTargets = Array.from(questionBlock.querySelectorAll('.drop-target'));
 
-            // Reset all targets and left items first
             allTargets.forEach(target => {
                 target.textContent = 'Déposez ici';
                 target.classList.remove('matched');
@@ -531,10 +542,9 @@ export function restoreAnswerSelectionUI(questionBlock, answer, type) {
             allLeftItems.forEach(item => {
                 item.classList.remove('matched');
                 item.setAttribute('draggable', 'true');
-                leftContainer.appendChild(item); // Ensure all start in left column
+                leftContainer.appendChild(item);
             });
 
-            // Reconstruct matched pairs based on saved answer { targetId: itemId }
             if (typeof answer === 'object' && answer !== null) {
                 for (const targetId in answer) {
                     const itemId = answer[targetId];
@@ -542,15 +552,12 @@ export function restoreAnswerSelectionUI(questionBlock, answer, type) {
                     const itemElement = allLeftItems.find(i => i.dataset.itemId === itemId);
 
                     if (targetElement && itemElement) {
-                        // Update target
-                        targetElement.innerHTML = itemElement.innerHTML; // Copy content
+                        targetElement.innerHTML = itemElement.innerHTML;
                         targetElement.classList.add('matched');
                         targetElement.dataset.pairedItemId = itemId;
                         targetElement.addEventListener('click', handleReturnItemToLeft);
                         targetElement.style.cursor = 'pointer';
                         targetElement.title = "Cliquez pour renvoyer l'élément à gauche";
-
-                        // Hide item from left
                         itemElement.classList.add('matched');
                         itemElement.setAttribute('draggable', 'false');
                     }

@@ -512,6 +512,34 @@ body[data-theme="dark"] .answer-options button.answer-btn.selected:disabled {
     border-color: var(--dark-border);
 }
 
+/* Style pour un bouton QCM/VF SÉLECTIONNÉ (avant validation) */
+.answer-options button.answer-btn.option-selected-ui {
+    /* Appliquer un style distinctif mais différent de la validation */
+    border-color: var(--secondary-color-dark); /* Bordure bleue plus foncée */
+    background-color: var(--secondary-color-light-bg); /* Fond bleu très clair */
+    color: var(--secondary-color-dark); /* Texte bleu foncé */
+    /* Optionnel: légère ombre intérieure pour effet "pressé" léger */
+    /* box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); */
+}
+
+/* Assurer que le style sélectionné désactivé est différent */
+.answer-options button.answer-btn.selected:disabled {
+    background-color: var(--duo-gray-lightest);
+    border-color: var(--duo-gray-light);
+    color: var(--text-color-disabled);
+    /* Pas de style option-selected-ui sur les désactivés validés */
+}
+body[data-theme="dark"] .answer-options button.answer-btn.selected:disabled {
+    background-color: rgba(74, 92, 109, 0.5);
+    border-color: var(--dark-border);
+    color: var(--dark-text-disabled);
+}
+
+/* Style hover différent si déjà sélectionné */
+.answer-options button.answer-btn.option-selected-ui:hover:not(:disabled) {
+    filter: brightness(0.98);
+}
+
 
 /* Checkbox Options (QCM-Multi) - Réutiliser le style des labels custom */
 .answer-options.qcm_multi .checkbox-label {
