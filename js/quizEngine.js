@@ -810,19 +810,37 @@ export function advanceQuestion() {
     if (nextIndex < state.questionsToAsk.length) {
         displayQuestion(nextIndex); // Afficher la question suivante
     } else {
-        // Quiz terminé
-        setQuizActive(false); // Utiliser le setter si disponible
-        if (state.timerInterval) clearInterval(state.timerInterval);
-        state.timerInterval = null; // Effacer l'ID de l'intervalle
-        if (!state.quizEndTime) state.quizEndTime = Date.now();
+        // --- CORRECTION : Vérifier si TOUTES les questions ont été répondues ---
+        // (On vient de répondre à la dernière, donc on vérifie l'état actuel de userAnswers)
+        const allAnswered = state.userAnswers.every(answer => answer !== null && answer.answer !== null);
 
-        // Afficher le bouton "Voir les Résultats"
-        dom.quiz.finishQuizBtn.classList.remove('hidden');
-        dom.quiz.cancelQuizBtn.classList.add('hidden');
-        updateQuestionGridNav(); // Mettre à jour la grille pour montrer l'état final
-        showToast("Session terminée ! Cliquez sur 'Voir les Résultats'.", "success");
-        audioManager.playSound('finish');
-        dom.quiz.finishQuizBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (allAnswered) {
+            // Toutes les questions ont une réponse -> Quiz terminé !
+            setQuizActive(false); // Marquer le quiz comme inactif
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = null;
+            if (!state.quizEndTime) state.quizEndTime = Date.now();
+
+            // Afficher le bouton "Voir les Résultats"
+            dom.quiz.finishQuizBtn.classList.remove('hidden');
+            dom.quiz.cancelQuizBtn.classList.add('hidden');
+            updateQuestionGridNav(); // Mettre à jour la grille pour montrer l'état final
+            showToast("Session terminée ! Cliquez sur 'Voir les Résultats'.", "success");
+            playSound('finish');
+            dom.quiz.finishQuizBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            // Pour l'instant, on marque comme inactif et on informe.
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = null;
+            if (!state.quizEndTime) state.quizEndTime = Date.now(); // Marquer la fin quand même ?
+
+            updateQuestionGridNav(); // Mettre à jour la grille
+            dom.quiz.cancelQuizBtn.classList.add('hidden'); // Cacher abandonner
+            dom.quiz.finishQuizBtn.classList.add('hidden'); // Cacher aussi finir
+            showToast("Vous avez répondu à la dernière question, mais certaines précédentes sont sans réponse.", "warning");
+            // Optionnel : Proposer un bouton pour "Aller à la prochaine question non répondue" ?
+            // Ou simplement laisser l'utilisateur naviguer via la grille.
+        }
     }
 }
 

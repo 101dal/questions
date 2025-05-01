@@ -1,0 +1,482 @@
+{
+    "quizId": "oral-australie-aborigenes-pieges-v2",
+    "quizTitle": "Quiz Entraînement Questions Pièges (Avancé): Oral Australie & Aborigènes",
+    "quizDescription": "Version étendue du quiz pour tester votre préparation aux questions difficiles, critiques et potentiellement déstabilisantes qui pourraient être posées lors de l'oral. Focus sur la nuance, la critique et la complexité.",
+    "version": "2.0",
+    "defaultPointsPerQuestion": 15,
+    "categories": [
+        "Concepts Fondamentaux et Nuances",
+        "Analyse Historique Critique",
+        "Colonisation et Structures Persistantes",
+        "Interprétation des Données et Indicateurs",
+        "Évaluation des Progrès et Limites",
+        "Analyse Post-Référendum",
+        "Synthèse et Perspectives Critiques",
+        "Comparaisons Internationales"
+    ],
+    "dummyAnswers": {
+        "Global": [
+            "Information non mentionnée dans le texte fourni",
+            "Seulement pendant le 19ème siècle",
+            "Exclusivement dans les zones urbaines",
+            "Grâce à une intervention internationale majeure",
+            "Cela reste un débat ouvert sans consensus clair",
+            "C'est uniquement une question de volonté politique individuelle",
+            "La situation est parfaitement identique dans tous les États australiens",
+            "Les médias internationaux exagèrent systématiquement le problème",
+            "La solution définitive viendra de l'assimilation culturelle complète",
+            "Il n'y a absolument aucune solution réaliste envisageable",
+            "C'est trop triste, il faut juste passer à autre chose et regarder vers l'avenir",
+            "Soit on a l'égalité formelle stricte, soit on divise irrémédiablement le pays",
+            "L'Australie a toujours fonctionné comme ça, le changement est trop risqué",
+            "Mais regardez les problèmes des minorités dans d'autres démocraties occidentales...",
+            "Il suffit d'appliquer exactement la même loi pour tous, sans exception",
+            "C'était il y a très longtemps, cela n'a plus aucune pertinence aujourd'hui",
+            "C'est avant tout aux Aborigènes de s'adapter et de s'en sortir eux-mêmes",
+            "Le problème est trop complexe, personne ne comprend vraiment",
+            "Les financements actuels sont déjà largement suffisants"
+        ],
+        "Concepts Fondamentaux et Nuances": [
+            "Une simple absence de discrimination active et visible",
+            "Un manque de représentation politique au parlement fédéral uniquement",
+            "Des problèmes sociaux isolés et spécifiques à certaines communautés éloignées",
+            "Une reconnaissance purement juridique et formelle des terres ancestrales",
+            "Principalement une question de développement économique et d'infrastructures",
+            "La création de plus de programmes sociaux spécifiques gérés par l'État",
+            "Le financement accru des services publics existants sans changement structurel",
+            "Une idéologie politique ancienne et dépassée sans aucun impact concret actuel",
+            "Une simple dispute territoriale historique localisée",
+            "Un concept juridique abstrait uniquement pertinent pour les historiens avant 1992",
+            "Des excuses officielles suffisent amplement pour la réconciliation",
+            "Il faut juste oublier le passé pour pouvoir se réconcilier",
+            "Si le pays est globalement stable, il ne peut y avoir de problème démocratique majeur"
+        ],
+        "Analyse Historique Critique": [
+            "Les politiques néolibérales récentes n'ont eu strictement aucun impact spécifique",
+            "Les dynamiques internes actuelles sont la cause première et principale des problèmes",
+            "L'héritage colonial est souvent une excuse utilisée pour justifier l'inaction aujourd'hui",
+            "Les Aborigènes n'ont montré aucune forme notable de résistance organisée avant 1960",
+            "Le 'Silence Australien' décrit une période où les Aborigènes eux-mêmes ne parlaient pas de leur histoire",
+            "Les Stolen Generations n'ont eu que des impacts psychologiques purement individuels et passagers",
+            "La grande diversité précoloniale facilite grandement la mise en place de politiques nationales uniques",
+            "Le terme générique 'Aborigène' reflète parfaitement la réalité sociale et politique précoloniale",
+            "Les maladies introduites étaient inévitables et ne relèvent pas de la responsabilité coloniale",
+            "L'histoire précoloniale de 65 000 ans n'a que peu de pertinence pour comprendre les enjeux actuels"
+        ],
+        "Colonisation et Structures Persistantes": [
+            "La colonisation s'est terminée avec la Fédération en 1901",
+            "Les structures coloniales ont été complètement démantelées après Mabo",
+            "L'impact du colonialisme est purement historique, sans structure actuelle",
+            "Les inégalités actuelles sont dues à des choix culturels post-coloniaux",
+            "Parler de 'colonialisme persistant' est un langage militant excessif",
+            "L'administration actuelle n'a aucun lien avec les pratiques coloniales",
+            "La reconnaissance symbolique a effacé les structures d'oppression",
+            "Les lois actuelles sont totalement neutres et n'ont aucun héritage colonial"
+        ],
+        "Interprétation des Données et Indicateurs": [
+            "L'Indice de Démocratie prouve l'inclusion effective des minorités en Australie",
+            "Les statistiques de pauvreté monétaire sont parfaitement applicables aux économies mixtes traditionnelles",
+            "Le taux de chômage officiel publié capture l'intégralité de la réalité du sous-emploi et du découragement",
+            "La surincarcération s'explique uniquement par un taux de criminalité intrinsèquement plus élevé",
+            "L'écart d'espérance de vie est principalement dû à des facteurs comportementaux ou génétiques spécifiques",
+            "La campagne 'Close the Gap' a globalement atteint son objectif principal sur l'espérance de vie",
+            "Les chiffres élevés d'incarcération justifient une approche sécuritaire et plus punitive",
+            "Ces indicateurs socio-économiques sont souvent trop alarmistes et peu fiables méthodologiquement",
+            "Si une statistique s'améliore légèrement (ex: mortalité infantile), cela signifie que le problème est en voie de résolution",
+            "Les moyennes nationales cachent les disparités, donc les chiffres globaux ne sont pas significatifs"
+        ],
+        "Évaluation des Progrès et Limites": [
+            "Le Native Title Act a effectivement restitué la majorité des terres ancestrales aux Aborigènes",
+            "Les excuses nationales officielles ont définitivement résolu la question des réparations matérielles",
+            "La cogestion d'Uluru équivaut désormais à une souveraineté territoriale totale des Aṉangu",
+            "L'existence d'un Plan d'Action Réconciliation (RAP) garantit un engagement sincère et efficace de l'entreprise",
+            "Les progrès symboliques (drapeau, excuses) sont suffisants pour parvenir à une réconciliation durable",
+            "L'affaire Mabo a mis fin à toutes les formes d'inégalités foncières et d'accès à la terre",
+            "Il n'y a plus d'obstacles légaux ou financiers majeurs pour revendiquer et obtenir le Native Title",
+            "Les bénéfices économiques issus de la cogestion des parcs sont toujours équitablement partagés avec les communautés locales",
+            "Puisque des lois existent (ex: anti-discrimination), la discrimination systémique n'est plus un problème",
+            "L'interdiction de grimper Uluru règle tous les conflits culturels sur les sites sacrés"
+        ],
+        "Analyse Post-Référendum": [
+            "Le rejet de la 'Voix' signifie un rejet définitif et total de toute forme de reconnaissance future",
+            "Le vote 'Non' était uniquement et exclusivement basé sur des motivations racistes",
+            "Le manque de détails précis n'était absolument pas un argument valide ou pertinent dans un référendum",
+            "La fracture géographique et démographique du vote n'a aucune signification politique profonde ou durable",
+            "Il n'existe désormais plus aucune alternative politique viable pour avancer après l'échec du référendum",
+            "La polarisation politique partisane n'a pas eu d'influence significative sur le résultat final",
+            "Le principe même d'une Voix constitutionnelle était universellement accepté, seul le 'comment' posait problème",
+            "La majorité des communautés aborigènes était en réalité opposée à la proposition de la Voix",
+            "L'échec prouve que les Aborigènes sont déjà suffisamment entendus par le système actuel",
+            "Le résultat reflète simplement une préférence pour des actions pratiques plutôt que constitutionnelles"
+        ],
+        "Synthèse et Perspectives Critiques": [
+            "L'exclusion historique et continue des Aborigènes n'est qu'une 'limite' mineure et marginale de la démocratie australienne",
+            "L'Australie est clairement en avance sur le Canada et la Nouvelle-Zélande en matière de droits et reconnaissance autochtones",
+            "Des ajustements politiques mineurs et progressifs suffiront à terme à démanteler l'exclusion systémique",
+            "Se concentrer sur la résilience et la culture occulte nécessairement les injustices et les inégalités structurelles",
+            "Une réconciliation véritable est parfaitement possible sans remettre fondamentalement en cause la souveraineté unique de l'État australien",
+            "La question de la souveraineté autochtone concurrente est un débat purement théorique sans aucune implication pratique",
+            "Le modèle démocratique libéral australien est parfaitement adapté, tel quel, aux besoins de sa population autochtone",
+            "Le passé colonial n'a objectivement plus aucune pertinence significative pour comprendre l'Australie contemporaine",
+            "Critiquer l'Australie sur la question autochtone relève de l'anti-patriotisme ou de l'ingérence étrangère",
+            "La seule voie réaliste est l'intégration individuelle dans la société dominante"
+        ],
+        "Comparaisons Internationales": [
+            "Le Traité de Waitangi (NZ) a résolu tous les problèmes des Māori",
+            "La reconnaissance constitutionnelle au Canada a mis fin aux inégalités",
+            "La souveraineté tribale aux USA est un modèle parfait sans inconvénients",
+            "L'Australie n'a absolument rien à apprendre des autres pays",
+            "Les contextes sont si différents que toute comparaison est inutile",
+            "Les sièges réservés en NZ prouvent une division ethnique néfaste",
+            "Les processus de vérité et réconciliation n'ont jamais d'impact concret",
+            "L'absence de traité en Australie est une preuve de modernité"
+        ]
+    },
+    "questions": [
+        {
+            "id": "piege-concept-001",
+            "type": "qcm",
+            "category": "Concepts Fondamentaux et Nuances",
+            "tags": [
+                "démocratie",
+                "indice",
+                "exclusion",
+                "critique"
+            ],
+            "text": "Face à la critique selon laquelle l'Indice de Démocratie masque l'exclusion des Aborigènes, quelle est la nuance la plus pertinente à apporter ?",
+            "correctAnswer": "L'indice mesure surtout la démocratie procédurale (élections, libertés formelles) et moins l'inclusion substantielle ou l'égalité réelle.",
+            "explanation": "Cette réponse reconnaît la validité de l'indice pour certains aspects (procédures) tout en soulignant sa limite majeure concernant l'inclusion et l'égalité substantielle, ce qui est au cœur de la critique.",
+            "points": 15
+        },
+        {
+            "id": "piege-concept-002",
+            "type": "qcm",
+            "category": "Concepts Fondamentaux et Nuances",
+            "tags": [
+                "systémique",
+                "exclusion",
+                "définition",
+                "exemple"
+            ],
+            "text": "Qu'est-ce qui caractérise le mieux l'aspect 'systémique' de l'exclusion, par exemple dans le cas de la surincarcération ?",
+            "correctAnswer": "Elle résulte d'un ensemble de facteurs interconnectés (historiques, sociaux, légaux) intégrés aux structures, et pas seulement d'actes individuels.",
+            "explanation": "Cette réponse définit correctement le caractère systémique comme étant intégré aux structures et résultant de multiples facteurs interdépendants, allant au-delà des préjugés individuels.",
+            "points": 15
+        },
+        {
+            "id": "piege-concept-003",
+            "type": "qcm",
+            "category": "Concepts Fondamentaux et Nuances",
+            "tags": [
+                "terra nullius",
+                "philosophie",
+                "humanité",
+                "conséquences"
+            ],
+            "text": "Au-delà de la négation de la souveraineté foncière, quelle fut la conséquence philosophique profonde de l'application de 'Terra Nullius' ?",
+            "correctAnswer": "Elle impliquait une négation de l'humanité organisée et civilisée des Aborigènes, justifiant la colonisation et fondant un racisme structurel.",
+            "explanation": "Cette réponse va au cœur de la critique de Terra Nullius, soulignant la déshumanisation implicite et ses conséquences durables sur la perception et le traitement des Aborigènes.",
+            "points": 20
+        },
+        {
+            "id": "piege-histoire-001",
+            "type": "vrai_faux",
+            "category": "Analyse Historique Critique",
+            "tags": [
+                "silence australien",
+                "résistance",
+                "stanner",
+                "interprétation"
+            ],
+            "text": "Vrai ou Faux : Critiquer le terme 'Grand Silence Australien' implique de reconnaître que ce 'silence' était plutôt une 'surdité' de la société dominante face à une résistance aborigène continue.",
+            "correctAnswer": true,
+            "explanation": "C'est une nuance critique importante : le 'silence' n'était pas une absence de voix aborigène, mais un refus de la part de la société dominante d'écouter ou de reconnaître ces voix et cette résistance.",
+            "points": 15
+        },
+        {
+            "id": "piege-histoire-002",
+            "type": "qcm_multi",
+            "category": "Analyse Historique Critique",
+            "tags": [
+                "causalité",
+                "inégalités",
+                "complexité",
+                "facteurs"
+            ],
+            "text": "En reconnaissant l'impact fondamental de la colonisation, quels autres facteurs sont souvent mentionnés par les analystes pour expliquer la persistance des inégalités AUJOURD'HUI ? (Plusieurs réponses possibles)",
+            "correctAnswer": [
+                "L'impact des politiques économiques néolibérales récentes",
+                "Les effets de la mondialisation sur l'emploi local",
+                "Les conséquences complexes du traumatisme intergénérationnel au sein des communautés"
+            ],
+            "explanation": "Une analyse nuancée reconnaît que si la colonisation est la racine, des facteurs plus récents (économiques, politiques) et les dynamiques internes (souvent liées au traumatisme) interagissent pour maintenir les inégalités. Il ne faut pas nier l'histoire, mais comprendre sa complexité actuelle.",
+            "points": 20,
+            "dummyAnswers": {
+                "Specific": [
+                    "L'absence totale d'aide gouvernementale depuis 50 ans",
+                    "Une prédisposition génétique à la pauvreté",
+                    "L'influence néfaste de la culture américaine"
+                ]
+            }
+        },
+        {
+            "id": "piege-data-001",
+            "type": "qcm",
+            "category": "Interprétation des Données et Indicateurs",
+            "tags": [
+                "incarcération",
+                "justice",
+                "discrimination",
+                "causes"
+            ],
+            "text": "Concernant le taux d'incarcération décuplé, quelle affirmation reflète une analyse critique allant au-delà de la simple exclusion sociale ?",
+            "correctAnswer": "Des politiques pénales spécifiques (caution, peines planchers) et des pratiques policières peuvent avoir un effet discriminatoire systémique, contribuant activement à ce taux.",
+            "explanation": "Cette réponse pointe vers des éléments du système judiciaire *lui-même* comme contribuant au problème, et pas seulement les facteurs sociaux externes. C'est une critique plus profonde.",
+            "points": 15
+        },
+        {
+            "id": "piege-progres-001",
+            "type": "qcm",
+            "category": "Évaluation des Progrès et Limites",
+            "tags": [
+                "mabo",
+                "native title",
+                "efficacité",
+                "limites"
+            ],
+            "text": "Quelle est la critique principale concernant l'efficacité *pratique* du Native Title Act, malgré son importance symbolique ?",
+            "correctAnswer": "Le fardeau de la preuve (connexion continue), les coûts légaux élevés et l'extinction du titre sur de nombreuses terres limitent fortement sa portée réelle.",
+            "explanation": "Cette réponse identifie les obstacles concrets (preuve, coût, extinction) qui limitent l'impact du Native Title sur le terrain, nuançant ainsi l'idée d'une victoire totale.",
+            "points": 15
+        },
+        {
+            "id": "piege-progres-002",
+            "type": "association",
+            "category": "Évaluation des Progrès et Limites",
+            "tags": [
+                "progrès",
+                "symbolique",
+                "substance",
+                "critique"
+            ],
+            "text": "Associez chaque 'progrès' à une critique ou nuance importante concernant sa portée réelle.",
+            "items_left": [
+                "Excuses Nationales (2008)",
+                "Cogestion de Parcs (ex: Uluru)",
+                "Plans d'Action Réconciliation (RAP)",
+                "Campagne 'Close the Gap'"
+            ],
+            "items_right": [
+                "Risque de 'Reconciliation Washing' sans impact réel sur l'emploi/conditions.",
+                "Résultats mitigés, objectifs clés (espérance de vie) non atteints.",
+                "Valeur symbolique forte mais manque de réparations financières ou changements structurels profonds.",
+                "Cadre légal étatique prévaut souvent, pas toujours un partage égal du pouvoir."
+            ],
+            "correctAnswer": {
+                "Excuses Nationales (2008)": "Valeur symbolique forte mais manque de réparations financières ou changements structurels profonds.",
+                "Cogestion de Parcs (ex: Uluru)": "Cadre légal étatique prévaut souvent, pas toujours un partage égal du pouvoir.",
+                "Plans d'Action Réconciliation (RAP)": "Risque de 'Reconciliation Washing' sans impact réel sur l'emploi/conditions.",
+                "Campagne 'Close the Gap'": "Résultats mitigés, objectifs clés (espérance de vie) non atteints."
+            },
+            "explanation": "Cette association force à considérer les limites et les critiques potentielles derrière chaque avancée mentionnée, évitant une vision trop optimiste ou simpliste.",
+            "points": 20
+        },
+        {
+            "id": "piege-ref-001",
+            "type": "qcm",
+            "category": "Analyse Post-Référendum",
+            "tags": [
+                "référendum",
+                "vote non",
+                "arguments",
+                "analyse"
+            ],
+            "text": "En analysant l'échec de la 'Voix', quel argument du camp 'Non' est souvent cité comme ayant été particulièrement efficace pour semer le doute, même s'il était critiqué par les partisans du 'Oui' ?",
+            "correctAnswer": "Le manque de détails précis sur le fonctionnement de la Voix ('Si vous ne savez pas, votez non').",
+            "explanation": "Cet argument a joué sur l'incertitude et la peur du changement, et s'est avéré très persuasif, illustrant comment le *processus* et la communication (ou leur absence) ont pu l'emporter sur le *principe* pour de nombreux électeurs.",
+            "points": 15
+        },
+        {
+            "id": "piege-ref-002",
+            "type": "qcm",
+            "category": "Analyse Post-Référendum",
+            "tags": [
+                "référendum",
+                "fracture",
+                "interprétation",
+                "politique"
+            ],
+            "text": "Que révèle principalement la fracture du vote (Oui dans les zones autochtones/villes vs Non ailleurs) lors du référendum de 2023 ?",
+            "correctAnswer": "Une déconnexion profonde entre les aspirations autochtones/certains centres urbains et les préoccupations ou la compréhension du reste du pays sur cette question.",
+            "explanation": "Cette réponse interprète la fracture non pas comme un simple résultat, mais comme le symptôme d'une division sociétale et politique plus profonde concernant la reconnaissance et la place des peuples autochtones.",
+            "points": 15
+        },
+        {
+            "id": "piege-synthese-001",
+            "type": "vrai_faux",
+            "category": "Synthèse et Perspectives Critiques",
+            "tags": [
+                "démocratie",
+                "nature",
+                "critique",
+                "fondements"
+            ],
+            "text": "Vrai ou Faux : Une perspective critique soutient que l'exclusion historique et continue des Aborigènes n'est pas une simple 'limite', mais remet en question la nature même de la démocratie australienne, la révélant comme incomplète ou défaillante.",
+            "correctAnswer": true,
+            "explanation": "C'est l'argument central d'une analyse critique : l'exclusion n'est pas périphérique mais touche aux fondements mêmes de la légitimité démocratique de l'État australien.",
+            "points": 15
+        },
+        {
+            "id": "piege-synthese-002",
+            "type": "qcm",
+            "category": "Comparaisons Internationales",
+            "tags": [
+                "comparaison",
+                "canada",
+                "nouvelle-zélande",
+                "australie",
+                "retard"
+            ],
+            "text": "En comparaison internationale (Canada, NZ), sur quels aspects clés l'Australie est-elle généralement considérée comme étant en retard concernant les droits autochtones ?",
+            "correctAnswer": "Absence de traités formels, de reconnaissance constitutionnelle spécifique et de représentation politique garantie (type sièges réservés).",
+            "explanation": "Cette réponse identifie les domaines clés (traités, constitution, représentation) où l'Australie est souvent vue comme ayant moins progressé que d'autres pays coloniaux comparables.",
+            "points": 15
+        },
+        {
+            "id": "piege-synthese-003",
+            "type": "qcm",
+            "category": "Synthèse et Perspectives Critiques",
+            "tags": [
+                "victime",
+                "résilience",
+                "équilibre",
+                "narratif"
+            ],
+            "text": "Pourquoi est-il important, tout en analysant l'exclusion systémique, de reconnaître également la résilience et l'agentivité des Aborigènes ?",
+            "correctAnswer": "Pour éviter de renforcer une image purement victimaire et pour reconnaître leur force, leur dynamisme culturel et leurs propres stratégies d'affirmation.",
+            "explanation": "Cette réponse souligne la nécessité d'un équilibre narratif qui, sans nier les injustices, rend compte de la capacité d'action et de la vitalité des peuples autochtones.",
+            "points": 15
+        },
+        {
+            "id": "piege-synthese-004",
+            "type": "qcm",
+            "category": "Synthèse et Perspectives Critiques",
+            "tags": [
+                "réconciliation",
+                "souveraineté",
+                "contradiction",
+                "état"
+            ],
+            "text": "Quelle est la 'contradiction insurmontable' potentielle au cœur de la réconciliation en Australie, soulevée par la question piège finale ?",
+            "correctAnswer": "La difficulté de parvenir à une réconciliation 'véritable' sans remettre en cause la souveraineté exclusive de l'État australien, fondée sur la négation de la souveraineté autochtone initiale.",
+            "explanation": "Cette réponse capture le dilemme fondamental : une réconciliation profonde pourrait nécessiter une transformation radicale de l'État que la plupart ne sont pas prêts à envisager, rendant la réconciliation potentiellement limitée au cadre existant.",
+            "points": 20
+        },
+        {
+            "id": "piege-colonisation-001",
+            "type": "qcm",
+            "category": "Colonisation et Structures Persistantes",
+            "tags": [
+                "colonialisme",
+                "structure",
+                "présent",
+                "continuité"
+            ],
+            "text": "Comment peut-on argumenter que le colonialisme en Australie n'est pas seulement un événement historique passé, mais une 'structure persistante' qui façonne les inégalités actuelles ?",
+            "correctAnswer": "En soulignant que les systèmes légaux, politiques et économiques actuels portent encore l'empreinte des logiques de dépossession et de contrôle établies durant la colonisation.",
+            "explanation": "Cette réponse met l'accent sur la continuité structurelle : les fondations posées par le colonialisme (système légal, répartition des terres, relations de pouvoir) continuent d'influencer le présent, même si les formes de domination ont changé.",
+            "points": 15
+        },
+        {
+            "id": "piege-histoire-003",
+            "type": "qcm",
+            "category": "Analyse Historique Critique",
+            "tags": [
+                "diversité",
+                "représentation",
+                "politique",
+                "complexité"
+            ],
+            "text": "En quoi la diversité historique des groupes aborigènes (plus de 500 nations, langues, lois) complique-t-elle spécifiquement les tentatives de créer une 'Voix' ou une représentation nationale unifiée aujourd'hui ?",
+            "correctAnswer": "Elle pose le défi de représenter équitablement une multitude d'intérêts, de cultures et de priorités potentiellement divergents au sein d'une structure unique, risquant l'homogénéisation.",
+            "explanation": "Cette réponse pointe le défi pratique et politique : comment une structure unique peut-elle respecter et refléter adéquatement une diversité aussi profonde sans écraser les voix minoritaires au sein du groupe autochtone lui-même ?",
+            "points": 15
+        },
+        {
+            "id": "piege-socioecon-001",
+            "type": "qcm",
+            "category": "Interprétation des Données et Indicateurs",
+            "tags": [
+                "pauvreté",
+                "chômage",
+                "responsabilité",
+                "systémique",
+                "argumentation"
+            ],
+            "text": "Face à un argument qui attribue la pauvreté ou le chômage élevés principalement à un manque d'effort individuel ou à des 'choix culturels', quelle est la contre-argumentation la plus solide ?",
+            "correctAnswer": "Rappeler l'impact écrasant de l'héritage historique (dépossession, traumatisme) et des barrières systémiques actuelles (discrimination, manque d'accès) qui limitent structurellement les opportunités.",
+            "explanation": "Cette réponse recadre le débat en insistant sur les causes structurelles et historiques, contrant ainsi les explications qui individualisent ou culturalisent excessivement la responsabilité de la situation.",
+            "points": 15
+        },
+        {
+            "id": "piege-progres-003",
+            "type": "vrai_faux",
+            "category": "Évaluation des Progrès et Limites",
+            "tags": [
+                "symbolique",
+                "structurel",
+                "suffisance",
+                "réconciliation"
+            ],
+            "text": "Vrai ou Faux : Une critique fréquente des 'progrès' réalisés (excuses, gestes symboliques) est qu'ils sont nécessaires mais insuffisants car ils n'entraînent pas automatiquement les changements structurels (fonciers, économiques, politiques) requis pour une réconciliation profonde.",
+            "correctAnswer": true,
+            "explanation": "C'est une critique fondamentale : le symbolique est important pour la reconnaissance, mais ne remplace pas les actions concrètes qui s'attaquent aux racines matérielles et structurelles des inégalités.",
+            "points": 15
+        },
+        {
+            "id": "piege-ref-003",
+            "type": "qcm",
+            "category": "Analyse Post-Référendum",
+            "tags": [
+                "référendum",
+                "égalité",
+                "droits spécifiques",
+                "argumentation"
+            ],
+            "text": "Comment articuler un argument en faveur de droits spécifiques ou d'une représentation distincte pour les peuples autochtones (comme la Voix) sans sembler contredire le principe démocratique d'égalité de tous les citoyens ?",
+            "correctAnswer": "En distinguant l'égalité formelle (même loi pour tous) de l'égalité substantielle (mesures spécifiques nécessaires pour surmonter un désavantage historique et structurel), et en soulignant le statut unique des peuples premiers.",
+            "explanation": "Cette réponse utilise la distinction clé entre égalité formelle et substantielle (ou équité) pour justifier des mesures spécifiques non pas comme des privilèges, mais comme des outils nécessaires pour atteindre une égalité réelle, compte tenu de l'histoire et du statut particulier des peuples autochtones.",
+            "points": 20
+        },
+        {
+            "id": "piege-data-002",
+            "type": "qcm",
+            "category": "Interprétation des Données et Indicateurs",
+            "tags": [
+                "statistiques",
+                "fiabilité",
+                "méthodologie",
+                "argumentation"
+            ],
+            "text": "Si un interlocuteur met en doute la fiabilité d'une statistique clé que vous citez (ex: 80% de pauvreté) en raison de possibles biais méthodologiques, quelle est la meilleure façon de répondre ?",
+            "correctAnswer": "Reconnaître les limites méthodologiques possibles (ex: définition du seuil) mais souligner que la tendance générale et l'ampleur du désavantage sont confirmées par de multiples indicateurs convergents.",
+            "explanation": "Cette approche montre une rigueur intellectuelle (reconnaissance des limites) tout en réaffirmant la validité du message principal (l'ampleur du problème) en s'appuyant sur la convergence d'autres données, évitant ainsi de se laisser piéger sur un seul chiffre contesté.",
+            "points": 15
+        },
+        {
+            "id": "piege-synthese-005",
+            "type": "qcm",
+            "category": "Synthèse et Perspectives Critiques",
+            "tags": [
+                "souveraineté",
+                "pratique",
+                "modèles",
+                "futur"
+            ],
+            "text": "Si l'on admet que la question de la souveraineté est centrale, quelles formes *pratiques* (même si politiquement difficiles) cette reconnaissance pourrait-elle prendre en Australie, au-delà d'une simple consultation ?",
+            "correctAnswer": "Négociation de traités régionaux ou nationaux définissant des compétences partagées, autonomie gouvernementale accrue pour les nations autochtones, ou mécanismes de co-souveraineté sur certains territoires/ressources.",
+            "explanation": "Cette réponse explore des modèles concrets (traités, autonomie, co-souveraineté) qui représentent des formes de reconnaissance de la souveraineté allant plus loin que le statu quo, tout en restant (théoriquement) dans le cadre d'un État fédéral modifié.",
+            "points": 15
+        }
+    ]
+}
